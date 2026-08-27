@@ -21,6 +21,7 @@ class Payment(Base):
     currency = Column(String, default="INR")
     status = Column(String, nullable=False)
     order_id = Column(String, unique=True, nullable=False)
+    failure_reason = Column(String, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
 
