@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
-
+from types import SimpleNamespace
 from backend.database import Base, engine, SessionLocal
 from backend import models
 from backend.recovery import get_recovery_recommendation
@@ -35,8 +35,12 @@ def get_failed_payments(db: Session = Depends(get_db)):
 
     return payments
 
-        
+@app.get("/recovery/test")
+def test_recovery(failure_reason: str = ""):
+    test_payment = SimpleNamespace(failure_reason=failure_reason)
 
+    return get_recovery_recommendation(test_payment)
+        
 
 @app.get("/recovery/{payment_id}")
 def get_recovery(payment_id: int, db: Session = Depends(get_db)):
@@ -46,3 +50,4 @@ def get_recovery(payment_id: int, db: Session = Depends(get_db)):
         return {"error": "Payment not found"}
 
     return get_recovery_recommendation(payment)
+
