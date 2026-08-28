@@ -1,103 +1,80 @@
 def get_recovery_recommendation(payment):
-    failure_reason = getattr(payment, "failure_reason", "")
+    failure_reason = (payment.failure_reason or "").lower()
 
-    if not failure_reason:
+    if "insufficient" in failure_reason or "balance" in failure_reason:
         return {
-            "action": "retry_payment",
-            "message": "Payment failed. Customer can retry the payment."
+            "failure_category": "Insufficient Funds",
+            "recommendation": "Ask the customer to add funds and retry the payment."
         }
 
-    reason = failure_reason.lower()
-
-    # Invalid payment ID
-    if "invalid payment id" in reason:
+    elif "timeout" in failure_reason or "timed out" in failure_reason:
         return {
-            "action": "reject_request",
-            "message": "The payment ID is invalid. Please provide a valid payment ID."
+            "failure_category": "Payment Timeout",
+            "recommendation": "Ask the customer to retry the payment after a short wait."
         }
 
-    # Duplicate webhook
-    elif "duplicate webhook" in reason:
+    elif "invalid" in failure_reason:
         return {
-            "action": "ignore_duplicate",
-            "message": "Duplicate webhook detected. No additional recovery action is required."
+            "failure_category": "Invalid Payment Details",
+            "recommendation": "Ask the customer to verify the payment details and try again."
         }
 
-    # LLM timeout
-    elif "llm timeout" in reason:
+    elif "high-value" in failure_reason or "approval" in failure_reason:
         return {
-            "action": "fallback_recovery",
-            "message": "AI service timed out. Using the fallback recovery strategy."
+            "failure_category": "High-Value Payment",
+            "recommendation": "Route the payment for approval before retrying."
         }
 
-    # Payment API unavailable
-    elif "payment api unavailable" in reason:
+    elif "declined" in failure_reason or "decline" in failure_reason:
         return {
-            "action": "retry_later",
-            "message": "Payment service is temporarily unavailable. Retry the payment later."
+            "failure_category": "Bank Declined",
+            "recommendation": "Ask the customer to contact their bank or use another payment method."
         }
 
-    # Payment already captured
-    elif "payment already captured" in reason:
+    elif "card expired" in failure_reason or "expired" in failure_reason:
         return {
-            "action": "no_action",
-            "message": "Payment has already been captured. No retry is required."
+            "failure_category": "Expired Card",
+            "recommendation": "Ask the customer to update their card details or use another card."
         }
 
-    # Retry limit exceeded
-    elif "retry limit exceeded" in reason:
+    elif "duplicate webhook" in failure_reason:
         return {
-            "action": "contact_support",
-            "message": "The maximum number of payment retries has been reached. Contact support."
+            "failure_category": "Duplicate Webhook",
+            "recommendation": "Ignore the duplicate webhook and keep the original payment record."
         }
 
-    # Customer opted out
-    elif "customer opted out" in reason:
+    elif "api unavailable" in failure_reason:
         return {
-            "action": "do_not_retry",
-            "message": "Customer has opted out of payment recovery. No automated retry will be attempted."
+            "failure_category": "Payment Service Unavailable",
+            "recommendation": "Retry the payment after the payment service becomes available."
         }
 
-    # High-value payment requiring approval
-    elif "high-value payment requiring approval" in reason:
+    elif "already captured" in failure_reason:
         return {
-            "action": "require_approval",
-            "message": "This high-value payment requires additional approval before recovery."
+            "failure_category": "Payment Already Captured",
+            "recommendation": "Do not retry the payment. Verify the existing captured payment."
         }
 
-    # Existing payment failure scenarios
-    elif "insufficient" in reason or "balance" in reason:
+    elif "retry limit" in failure_reason:
         return {
-            "action": "try_another_method",
-            "message": "Insufficient funds. Customer should try another payment method."
+            "failure_category": "Retry Limit Exceeded",
+            "recommendation": "Stop automatic retries and require manual review or another payment method."
         }
 
-    elif "expired" in reason:
+    elif "opted out" in failure_reason:
         return {
-            "action": "update_card",
-            "message": "The card appears to be expired. Customer should update the card details."
+            "failure_category": "Customer Opted Out",
+            "recommendation": "Do not retry automatically because the customer has opted out."
         }
 
-    elif "declined" in reason:
+    elif failure_reason:
         return {
-            "action": "retry_payment",
-            "message": "Payment was declined. Customer can retry or use another payment method."
-        }
-
-    elif "network" in reason or "timeout" in reason or "temporary" in reason:
-        return {
-            "action": "retry_later",
-            "message": "A temporary payment issue occurred. Customer should retry after a short time."
-        }
-
-    elif "invalid" in reason:
-        return {
-            "action": "update_payment_details",
-            "message": "Payment details appear to be invalid. Customer should check and update them."
+            "failure_category": "Other Failure",
+            "recommendation": "Ask the customer to retry the payment or use another payment method."
         }
 
     else:
         return {
-            "action": "contact_support",
-            "message": "Payment failed for an unknown reason. Customer should contact support."
+            "failure_category": "Unknown",
+            "recommendation": "Unable to determine the failure reason."
         }
