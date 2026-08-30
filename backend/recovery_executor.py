@@ -1,4 +1,5 @@
 from backend import models
+from backend.action_executor import execute_action
 
 
 def execute_recovery(payment, policy_result, db):
@@ -7,7 +8,11 @@ def execute_recovery(payment, policy_result, db):
     approved by the Policy & Safety Engine.
 
     Phase 5:
-    Also records the recovery action in the database.
+    Records the recovery action in the database.
+
+    Phase 6:
+    Passes approved actions to the Action Executor,
+    which creates the corresponding payment attempt.
     """
 
     policy_decision = policy_result["policy_decision"]
@@ -19,8 +24,12 @@ def execute_recovery(payment, policy_result, db):
 
     recovery_case = (
         db.query(models.RecoveryCase)
-        .filter(models.RecoveryCase.payment_id == payment.id)
-        .order_by(models.RecoveryCase.created_at.desc())
+        .filter(
+            models.RecoveryCase.payment_id == payment.id
+        )
+        .order_by(
+            models.RecoveryCase.created_at.desc()
+        )
         .first()
     )
 
@@ -85,33 +94,20 @@ def execute_recovery(payment, policy_result, db):
 
     if policy_decision == "APPROVED":
 
-        # Retry payment
-        if approved_action == "retry_payment":
+        # Actions that are allowed to reach the Action Executor
+        supported_actions = [
+            "retry_payment",
+            "retry_after_funds_added",
+            "ask_customer_to_update_payment_method",
+            "ask_customer_to_contact_bank",
+            "do_not_retry"
+        ]
 
-            message = "Payment retry action has been scheduled."
+        # -----------------------------------------------------
+        # Check for unknown action
+        # -----------------------------------------------------
 
-        # Retry after customer adds funds
-        elif approved_action == "retry_after_funds_added":
-
-            message = "Payment retry will occur after funds are added."
-
-        # Ask customer to update payment method
-        elif approved_action == "ask_customer_to_update_payment_method":
-
-            message = "Customer should update their payment method."
-
-        # Ask customer to contact bank
-        elif approved_action == "ask_customer_to_contact_bank":
-
-            message = "Customer should contact their bank."
-
-        # Do not retry
-        elif approved_action == "do_not_retry":
-
-            message = "No payment retry will be performed."
-
-        # Unknown action
-        else:
+        if approved_action not in supported_actions:
 
             action = models.RecoveryAction(
                 recovery_case_id=recovery_case.id,
@@ -130,23 +126,54 @@ def execute_recovery(payment, policy_result, db):
             }
 
         # -----------------------------------------------------
-        # Save approved action
+        # Phase 6: Execute approved action
+        # -----------------------------------------------------
+
+        action_result = execute_action(
+            payment=payment,
+            action_type=approved_action,
+            db=db
+        )
+
+        # -----------------------------------------------------
+        # Determine RecoveryAction status
+        # -----------------------------------------------------
+
+        if action_result["action_status"] == "EXECUTED":
+            recovery_action_status = "executed"
+
+        elif action_result["action_status"] == "BLOCKED":
+            recovery_action_status = "blocked"
+
+        elif action_result["action_status"] == "NEEDS_HUMAN":
+            recovery_action_status = "needs_human"
+
+        else:
+            recovery_action_status = "failed"
+
+        # -----------------------------------------------------
+        # Record action in recovery_actions table
         # -----------------------------------------------------
 
         action = models.RecoveryAction(
             recovery_case_id=recovery_case.id,
             action_type=approved_action,
-            message=message,
-            status="executed"
+            message=action_result["message"],
+            status=recovery_action_status
         )
 
         db.add(action)
         db.commit()
 
+        # -----------------------------------------------------
+        # Return execution result
+        # -----------------------------------------------------
+
         return {
-            "execution_status": "EXECUTED",
+            "execution_status": action_result["action_status"],
             "action": approved_action,
-            "message": message
+            "message": action_result["message"],
+            "attempt_id": action_result.get("attempt_id")
         }
 
     # ---------------------------------------------------------
