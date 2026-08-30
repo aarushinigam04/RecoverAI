@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from types import SimpleNamespace
@@ -12,6 +13,7 @@ from backend.policy_engine import evaluate_policy
 from backend.recovery_executor import execute_recovery
 from backend.razorpay_client import create_test_order
 from backend.metrics import calculate_metrics
+from pathlib import Path
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -19,6 +21,17 @@ Base.metadata.create_all(bind=engine)
 
 # Create FastAPI application
 app = FastAPI(title="RecoverAI")
+
+# Dashboard frontend
+BASE_DIR = Path(__file__).resolve().parent.parent
+DASHBOARD_DIR = BASE_DIR / "dashboard"
+
+# Serve the frontend dashboard
+app.mount(
+    "/ui",
+    StaticFiles(directory="dashboard", html=True),
+    name="dashboard"
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:5500", "http://localhost:5500"],
