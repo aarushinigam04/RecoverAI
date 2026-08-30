@@ -1,12 +1,19 @@
 from backend import models
+from backend.razorpay_client import create_test_order
 
 
 def execute_action(payment, action_type, db):
     """
-    Phase 6: Action Executor
+    Phase 8: Razorpay Test Mode Action Executor
 
-    Executes a policy-approved recovery action
-    using a safe simulated payment environment.
+    Executes a policy-approved recovery action.
+
+    For retry_payment, a Razorpay Test Mode order is created.
+    Other recovery actions are recorded as simulated actions.
+
+    IMPORTANT:
+    This project uses Razorpay Test Mode only.
+    No real payment is processed.
     """
 
     # ---------------------------------------------------------
@@ -15,22 +22,42 @@ def execute_action(payment, action_type, db):
 
     if action_type == "retry_payment":
 
-        attempt = models.PaymentAttempt(
-            payment_id=payment.id,
-            status="retry_scheduled",
-            failure_reason=None
-        )
+        try:
+            # Create Razorpay Test Mode order.
+            # Amount is supplied in paise.
+            order = create_test_order(
+                amount=int(payment.amount * 100)
+            )
 
-        db.add(attempt)
-        db.commit()
-        db.refresh(attempt)
+            attempt = models.PaymentAttempt(
+                payment_id=payment.id,
+                status="retry_scheduled",
+                failure_reason=None
+            )
 
-        return {
-            "action_status": "EXECUTED",
-            "action": "retry_payment",
-            "attempt_id": attempt.id,
-            "message": "Payment retry has been scheduled."
-        }
+            db.add(attempt)
+            db.commit()
+            db.refresh(attempt)
+
+            return {
+                "action_status": "EXECUTED",
+                "action": "retry_payment",
+                "attempt_id": attempt.id,
+                "razorpay_order_id": order["id"],
+                "razorpay_order_status": order["status"],
+                "amount": order["amount"],
+                "currency": order["currency"],
+                "message": "Payment retry has been scheduled in Razorpay Test Mode."
+            }
+
+        except Exception as e:
+
+            return {
+                "action_status": "FAILED",
+                "action": "retry_payment",
+                "message": "Unable to create Razorpay Test Mode order.",
+                "error": str(e)
+            }
 
     # ---------------------------------------------------------
     # RETRY AFTER FUNDS ARE ADDED

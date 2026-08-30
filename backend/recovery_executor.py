@@ -93,15 +93,14 @@ def execute_recovery(payment, policy_result, db):
     # ---------------------------------------------------------
 
     if policy_decision == "APPROVED":
+        # Phase 8: Execute approved action
+        execution_result = execute_action(
+        payment=payment,
+        action_type=approved_action,
+        db=db
+        )
 
-        # Actions that are allowed to reach the Action Executor
-        supported_actions = [
-            "retry_payment",
-            "retry_after_funds_added",
-            "ask_customer_to_update_payment_method",
-            "ask_customer_to_contact_bank",
-            "do_not_retry"
-        ]
+        return execution_result
 
         # -----------------------------------------------------
         # Check for unknown action

@@ -10,7 +10,7 @@ from backend.ai_agent import diagnose_payment
 from backend.context_builder import build_payment_context
 from backend.policy_engine import evaluate_policy
 from backend.recovery_executor import execute_recovery
-
+from backend.razorpay_client import create_test_order
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -283,3 +283,28 @@ def dashboard(db: Session = Depends(get_db)):
             for attempt in attempts
         ]
     }    
+# ---------------------------------------------------------
+# Razorpay Test Order
+# ---------------------------------------------------------
+
+@app.post("/razorpay/test-order")
+def create_razorpay_test_order(
+    db: Session = Depends(get_db)
+):
+    try:
+        order = create_test_order(100)
+
+        return {
+            "status": "success",
+            "message": "Razorpay Test Mode order created.",
+            "order_id": order["id"],
+            "amount": order["amount"],
+            "currency": order["currency"]
+        }
+
+    except Exception as e:
+        return {
+            "status": "failed",
+            "message": "Unable to create Razorpay test order.",
+            "error": str(e)
+        }
