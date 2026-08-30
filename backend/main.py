@@ -11,6 +11,7 @@ from backend.context_builder import build_payment_context
 from backend.policy_engine import evaluate_policy
 from backend.recovery_executor import execute_recovery
 from backend.razorpay_client import create_test_order
+from backend.metrics import calculate_metrics
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -308,3 +309,10 @@ def create_razorpay_test_order(
             "message": "Unable to create Razorpay test order.",
             "error": str(e)
         }
+# ---------------------------------------------------------
+# Metrics & Evaluation
+# ---------------------------------------------------------
+
+@app.get("/metrics")
+def get_metrics(db: Session = Depends(get_db)):
+    return calculate_metrics(db)
