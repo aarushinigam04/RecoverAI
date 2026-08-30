@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from types import SimpleNamespace
 
@@ -17,6 +18,14 @@ Base.metadata.create_all(bind=engine)
 
 # Create FastAPI application
 app = FastAPI(title="RecoverAI")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:5500", "http://localhost:5500"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 
 # ---------------------------------------------------------
@@ -205,3 +214,72 @@ def execute_payment_recovery(payment_id: int, db: Session = Depends(get_db)):
         "policy": policy_result,
         "execution": execution_result
     }
+# ---------------------------------------------------------
+# Dashboard
+# ---------------------------------------------------------
+
+@app.get("/dashboard")
+def dashboard(db: Session = Depends(get_db)):
+
+    # Get all payments
+    payments = db.query(models.Payment).all()
+
+    # Get all payment attempts
+    attempts = db.query(models.PaymentAttempt).all()
+
+    # Calculate dashboard statistics
+    total_payments = len(payments)
+
+    failed_payments = len([
+        payment for payment in payments
+        if payment.status == "failed"
+    ])
+
+    executed_actions = len([
+        attempt for attempt in attempts
+        if attempt.status in [
+            "retry_scheduled",
+            "waiting_for_funds",
+            "customer_action_required",
+            "bank_contact_required"
+        ]
+    ])
+
+    blocked_actions = len([
+        attempt for attempt in attempts
+        if attempt.status == "retry_blocked"
+    ])
+
+    human_review_cases = len([
+        attempt for attempt in attempts
+        if attempt.status == "human_review_required"
+    ])
+
+    return {
+        "statistics": {
+            "total_payments": total_payments,
+            "failed_payments": failed_payments,
+            "executed_actions": executed_actions,
+            "blocked_actions": blocked_actions,
+            "human_review_cases": human_review_cases
+        },
+        "payments": [
+            {
+                "payment_id": payment.id,
+                "amount": payment.amount,
+                "currency": payment.currency,
+                "status": payment.status,
+                "failure_reason": payment.failure_reason
+            }
+            for payment in payments
+        ],
+        "payment_attempts": [
+            {
+                "attempt_id": attempt.id,
+                "payment_id": attempt.payment_id,
+                "status": attempt.status,
+                "failure_reason": attempt.failure_reason
+            }
+            for attempt in attempts
+        ]
+    }    

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RecoverAI Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header>
+        <h1>RecoverAI</h1>
+        <p>Payment Recovery Dashboard</p>
+    </header>
+
+    <main>
+
+        <!-- Statistics -->
+        <section class="stats">
+
+            <div class="card">
+                <h3>Total Payments</h3>
+                <p id="total-payments">0</p>
+            </div>
+
+            <div class="card">
+                <h3>Failed Payments</h3>
+                <p id="failed-payments">0</p>
+            </div>
+
+            <div class="card">
+                <h3>Executed Actions</h3>
+                <p id="executed-actions">0</p>
+            </div>
+
+            <div class="card">
+                <h3>Blocked Actions</h3>
+                <p id="blocked-actions">0</p>
+            </div>
+
+            <div class="card">
+                <h3>Human Review</h3>
+                <p id="human-review">0</p>
+            </div>
+
+        </section>
+
+        <!-- Payments -->
+        <section class="panel">
+
+            <h2>Failed Payments</h2>
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Payment ID</th>
+                        <th>Amount</th>
+                        <th>Currency</th>
+                        <th>Status</th>
+                        <th>Failure Reason</th>
+                    </tr>
+                </thead>
+
+                <tbody id="payments-table">
+                </tbody>
+
+            </table>
+
+        </section>
+
+        <!-- Payment Attempts -->
+        <section class="panel">
+
+            <h2>Recovery Actions</h2>
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Attempt ID</th>
+                        <th>Payment ID</th>
+                        <th>Status</th>
+                        <th>Failure Reason</th>
+                    </tr>
+                </thead>
+
+                <tbody id="attempts-table">
+                </tbody>
+
+            </table>
+
+        </section>
+
+    </main>
+
+    <script src="app.js"></script>
+
+</body>
+</html>
