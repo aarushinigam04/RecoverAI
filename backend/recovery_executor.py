@@ -7,19 +7,15 @@ def execute_recovery(payment, policy_result, db):
     Execute a recovery action only after it has been
     approved by the Policy & Safety Engine.
 
-    Phase 5:
-    Records the recovery action in the database.
-
-    Phase 6:
-    Passes approved actions to the Action Executor,
-    which creates the corresponding payment attempt.
+    Records the recovery action and delegates approved
+    actions to the Action Executor.
     """
 
     policy_decision = policy_result["policy_decision"]
     approved_action = policy_result["approved_action"]
 
     # ---------------------------------------------------------
-    # Find or create a recovery case
+    # Find or create recovery case
     # ---------------------------------------------------------
 
     recovery_case = (
@@ -34,6 +30,7 @@ def execute_recovery(payment, policy_result, db):
     )
 
     if not recovery_case:
+
         recovery_case = models.RecoveryCase(
             payment_id=payment.id,
             status="open",
@@ -49,21 +46,27 @@ def execute_recovery(payment, policy_result, db):
     # ---------------------------------------------------------
 
     if policy_decision == "BLOCKED":
+        action_result = execute_action(
+            payment=payment,
+            action_type=approved_action,
+            db=db
+        )
 
         action = models.RecoveryAction(
             recovery_case_id=recovery_case.id,
-            action_type="do_not_retry",
-            message="Recovery action was blocked by the policy engine.",
+            action_type=approved_action,
+            message=action_result["message"],
             status="blocked"
-        )
+       )
 
         db.add(action)
         db.commit()
 
         return {
             "execution_status": "BLOCKED",
-            "action": "do_not_retry",
-            "message": "Recovery action was blocked by the policy engine."
+            "action": approved_action,
+            "message": action_result["message"],
+            "attempt_id": action_result.get("attempt_id")
         }
 
     # ---------------------------------------------------------
@@ -71,63 +74,37 @@ def execute_recovery(payment, policy_result, db):
     # ---------------------------------------------------------
 
     if policy_decision == "NEEDS_HUMAN":
+        
+        action_result = execute_action(
+            payment=payment,
+            action_type=approved_action,
+            db=db
+        )
 
         action = models.RecoveryAction(
             recovery_case_id=recovery_case.id,
-            action_type="require_human_review",
-            message="Recovery action requires human review.",
+            action_type=approved_action,
+            message=action_result["message"],
             status="needs_human"
-        )
+     )
 
         db.add(action)
         db.commit()
 
         return {
             "execution_status": "NEEDS_HUMAN",
-            "action": "require_human_review",
-            "message": "Recovery action requires human review."
-        }
+            "action": approved_action,
+            "message": action_result["message"],
+            "attempt_id": action_result.get("attempt_id")
+       }
 
     # ---------------------------------------------------------
     # APPROVED
     # ---------------------------------------------------------
 
     if policy_decision == "APPROVED":
-        # Phase 8: Execute approved action
-        execution_result = execute_action(
-        payment=payment,
-        action_type=approved_action,
-        db=db
-        )
 
-        return execution_result
-
-        # -----------------------------------------------------
-        # Check for unknown action
-        # -----------------------------------------------------
-
-        if approved_action not in supported_actions:
-
-            action = models.RecoveryAction(
-                recovery_case_id=recovery_case.id,
-                action_type=approved_action,
-                message="Unknown recovery action.",
-                status="failed"
-            )
-
-            db.add(action)
-            db.commit()
-
-            return {
-                "execution_status": "FAILED",
-                "action": approved_action,
-                "message": "Unknown recovery action."
-            }
-
-        # -----------------------------------------------------
-        # Phase 6: Execute approved action
-        # -----------------------------------------------------
-
+        # Execute the policy-approved action
         action_result = execute_action(
             payment=payment,
             action_type=approved_action,

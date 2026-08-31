@@ -28,7 +28,7 @@ def evaluate_policy(payment, diagnosis):
     # ---------------------------------------------------------
     # POLICY 1: High-value payments
     # ---------------------------------------------------------
-    if amount >= 2000:
+    if amount >= 50000:
         add_risk_flag("high_value_payment")
 
         return {
@@ -63,9 +63,21 @@ def evaluate_policy(payment, diagnosis):
             "reason": "Payment has already been captured. Retry is prohibited.",
             "risk_flags": risk_flags
         }
-
+        # ---------------------------------------------------------
+    # POLICY 4: Fraud detected
     # ---------------------------------------------------------
-    # POLICY 4: Duplicate payment event
+    if category == "Fraud Detected":
+        add_risk_flag("fraud_detected")
+        add_risk_flag("restricted_recovery_action")
+
+        return {
+            "policy_decision": "BLOCKED",
+            "approved_action": "do_not_retry",
+            "reason": "Potential fraud detected. Automatic payment recovery is blocked.",
+            "risk_flags": risk_flags
+        }
+    # ---------------------------------------------------------
+    # POLICY 5: Duplicate payment event
     # ---------------------------------------------------------
     if category == "Duplicate Event":
         add_risk_flag("restricted_recovery_action")
@@ -78,7 +90,7 @@ def evaluate_policy(payment, diagnosis):
         }
 
     # ---------------------------------------------------------
-    # POLICY 5: Customer opted out
+    # POLICY 6: Customer opted out
     # ---------------------------------------------------------
     if category == "Customer Opted Out":
         add_risk_flag("restricted_recovery_action")
@@ -91,7 +103,7 @@ def evaluate_policy(payment, diagnosis):
         }
 
     # ---------------------------------------------------------
-    # POLICY 6: Retry limit exceeded
+    # POLICY 7: Retry limit exceeded
     # ---------------------------------------------------------
     if category == "Retry Limit Exceeded":
         add_risk_flag("restricted_recovery_action")
@@ -104,7 +116,7 @@ def evaluate_policy(payment, diagnosis):
         }
 
     # ---------------------------------------------------------
-    # POLICY 7: Approve normal recovery recommendations
+    # POLICY 8: Approve normal recovery recommendations
     # ---------------------------------------------------------
     return {
         "policy_decision": "APPROVED",

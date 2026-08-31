@@ -1,3 +1,5 @@
+import random
+
 from backend.database import SessionLocal
 from backend.models import (
     Customer,
@@ -8,192 +10,442 @@ from backend.models import (
 )
 
 
+# =========================================================
+# CONFIGURATION
+# =========================================================
+
+TOTAL_PAYMENTS = 500
+
+# Fixed seed makes the evaluation dataset reproducible.
+random.seed(42)
+
+
+# =========================================================
+# SYNTHETIC DATA
+# =========================================================
+
+FIRST_NAMES = [
+    "Rahul", "Priya", "Aman", "Sneha", "Arjun",
+    "Ananya", "Rohan", "Neha", "Karan", "Pooja",
+    "Aditya", "Isha", "Vikram", "Meera", "Nikhil",
+    "Kavya", "Sahil", "Riya", "Varun", "Simran"
+]
+
+LAST_NAMES = [
+    "Sharma", "Singh", "Verma", "Gupta", "Kumar",
+    "Mishra", "Agarwal", "Tiwari", "Srivastava",
+    "Malhotra"
+]
+
+
+# These are intentionally varied so the recovery engine
+# gets multiple types of payment failures.
+FAILURE_TYPES = [
+    ("bank timeout", 15),
+    ("network timeout", 12),
+    ("network connectivity issue", 8),
+    ("insufficient funds", 12),
+    ("card expired", 8),
+    ("payment declined", 10),
+    ("invalid payment details", 7),
+    ("fraud detected", 5),
+    ("duplicate webhook", 4),
+    ("LLM timeout", 4),
+    ("Payment API unavailable", 4),
+    ("Payment already captured", 3),
+    ("Retry limit exceeded", 3),
+    ("Customer opted out", 3),
+    ("High-value payment requiring approval", 2),
+]
+
+
+def choose_failure_reason():
+    reasons = [item[0] for item in FAILURE_TYPES]
+    weights = [item[1] for item in FAILURE_TYPES]
+
+    return random.choices(
+        reasons,
+        weights=weights,
+        k=1
+    )[0]
+
+
+def choose_amount(failure_reason):
+
+    # Guarantee that high-value cases really are high-value.
+    if failure_reason == "High-value payment requiring approval":
+        return round(random.uniform(50001, 100000), 2)
+
+    return round(
+        random.uniform(299, 10000),
+        2
+    )
+
+
+# =========================================================
+# DATABASE
+# =========================================================
+
 db = SessionLocal()
 
+
 try:
-    # -------------------------
-    # 1. Create customers
-    # -------------------------
 
-    customer1 = Customer(
-        name="Rahul Sharma",
-        email="rahul@example.com"
-    )
+    # =====================================================
+    # 1. REMOVE OLD TEST DATA
+    # =====================================================
 
-    customer2 = Customer(
-        name="Priya Singh",
-        email="priya@example.com"
-    )
+    print("Removing old test data...")
 
-    customer3 = Customer(
-        name="Aman Verma",
-        email="aman@example.com"
-    )
-
-    customer4 = Customer(
-        name="Sneha Gupta",
-        email="sneha@example.com"
-    )
-
-    db.add_all([
-        customer1,
-        customer2,
-        customer3,
-        customer4
-    ])
+    # Delete child records first because of foreign keys.
+    db.query(RecoveryAction).delete()
+    db.query(RecoveryCase).delete()
+    db.query(PaymentAttempt).delete()
+    db.query(Payment).delete()
+    db.query(Customer).delete()
 
     db.commit()
 
-    # -------------------------
-    # 2. Create payments
-    # -------------------------
+    print("Old test data removed.")
 
-    payment1 = Payment(
-        customer_id=customer1.id,
-        amount=2499.00,
-        currency="INR",
-        status="failed",
-        order_id="ORD-1001"
-    )
+    # =====================================================
+    # 2. CREATE CUSTOMERS
+    # =====================================================
 
-    payment2 = Payment(
-        customer_id=customer2.id,
-        amount=1499.00,
-        currency="INR",
-        status="failed",
-        order_id="ORD-1002"
-    )
+    customers = []
 
-    payment3 = Payment(
-        customer_id=customer3.id,
-        amount=3999.00,
-        currency="INR",
-        status="success",
-        order_id="ORD-1003"
-    )
+    for i in range(1, TOTAL_PAYMENTS + 1):
 
-    payment4 = Payment(
-        customer_id=customer4.id,
-        amount=799.00,
-        currency="INR",
-        status="failed",
-        order_id="ORD-1004"
-    )
+        first_name = random.choice(FIRST_NAMES)
+        last_name = random.choice(LAST_NAMES)
 
-    db.add_all([
-        payment1,
-        payment2,
-        payment3,
-        payment4
-    ])
+        customer = Customer(
+            name=f"{first_name} {last_name}",
+            email=f"customer{i}@recoverai.test"
+        )
 
+        customers.append(customer)
+
+    db.add_all(customers)
     db.commit()
 
-    # -------------------------
-    # 3. Create payment attempts
-    # -------------------------
+    for customer in customers:
+        db.refresh(customer)
 
-    attempt1 = PaymentAttempt(
-        payment_id=payment1.id,
-        status="failed",
-        failure_reason="insufficient_funds"
-    )
+    print(f"Created customers: {len(customers)}")
 
-    attempt2 = PaymentAttempt(
-        payment_id=payment2.id,
-        status="failed",
-        failure_reason="bank_declined"
-    )
+    # =====================================================
+    # 3. CREATE PAYMENTS
+    # =====================================================
 
-    attempt3 = PaymentAttempt(
-        payment_id=payment3.id,
-        status="success",
-        failure_reason=None
-    )
+    payments = []
 
-    attempt4 = PaymentAttempt(
-        payment_id=payment4.id,
-        status="failed",
-        failure_reason="network_error"
-    )
+    for i in range(1, TOTAL_PAYMENTS + 1):
 
-    db.add_all([
-        attempt1,
-        attempt2,
-        attempt3,
-        attempt4
-    ])
+        failure_reason = choose_failure_reason()
 
+        amount = choose_amount(
+            failure_reason
+        )
+
+        payment = Payment(
+            customer_id=random.choice(customers).id,
+            amount=amount,
+            currency="INR",
+            status="failed",
+            order_id=f"RECOVERAI-ORD-{i:04d}",
+            failure_reason=failure_reason
+        )
+
+        payments.append(payment)
+
+    db.add_all(payments)
     db.commit()
 
-    # -------------------------
-    # 4. Create recovery cases
-    # -------------------------
+    for payment in payments:
+        db.refresh(payment)
 
-    case1 = RecoveryCase(
-        payment_id=payment1.id,
-        status="open",
-        priority="high"
-    )
+    print(f"Created payments: {len(payments)}")
 
-    case2 = RecoveryCase(
-        payment_id=payment2.id,
-        status="open",
-        priority="medium"
-    )
+    # =====================================================
+    # 4. CREATE INITIAL PAYMENT ATTEMPTS
+    # =====================================================
 
-    case3 = RecoveryCase(
-        payment_id=payment4.id,
-        status="open",
-        priority="low"
-    )
+    attempts = []
 
-    db.add_all([
-        case1,
-        case2,
-        case3
-    ])
+    for payment in payments:
 
+        attempt = PaymentAttempt(
+            payment_id=payment.id,
+            status="failed",
+            failure_reason=payment.failure_reason
+        )
+
+        attempts.append(attempt)
+
+    db.add_all(attempts)
     db.commit()
 
-    # -------------------------
-    # 5. Create recovery actions
-    # -------------------------
+    print(f"Created payment attempts: {len(attempts)}")
 
-    action1 = RecoveryAction(
-        recovery_case_id=case1.id,
-        action_type="retry_payment",
-        message="Customer may retry payment using another payment method.",
-        status="pending"
-    )
+    # =====================================================
+    # 5. CREATE RECOVERY CASES
+    # =====================================================
 
-    action2 = RecoveryAction(
-        recovery_case_id=case2.id,
-        action_type="send_reminder",
-        message="Send payment reminder to customer.",
-        status="pending"
-    )
+    recovery_cases = []
 
-    action3 = RecoveryAction(
-        recovery_case_id=case3.id,
-        action_type="retry_payment",
-        message="Temporary network issue detected. Suggest retry.",
-        status="pending"
-    )
+    for payment in payments:
 
-    db.add_all([
-        action1,
-        action2,
-        action3
-    ])
+        if payment.amount > 50000:
+            priority = "high"
 
+        elif payment.amount > 10000:
+            priority = "medium"
+
+        else:
+            priority = "low"
+
+        case = RecoveryCase(
+            payment_id=payment.id,
+            status="open",
+            priority=priority
+        )
+
+        recovery_cases.append(case)
+
+    db.add_all(recovery_cases)
     db.commit()
 
-    print("✅ Test data added successfully!")
+    for case in recovery_cases:
+        db.refresh(case)
+
+    print(f"Created recovery cases: {len(recovery_cases)}")
+
+    # =====================================================
+    # 6. CREATE INITIAL RECOVERY ACTIONS
+    # =====================================================
+
+    actions = []
+
+    for case in recovery_cases:
+
+        payment = next(
+            p for p in payments
+            if p.id == case.payment_id
+        )
+
+        reason = payment.failure_reason.lower()
+
+        # -------------------------------------------------
+        # TEMPORARY FAILURES
+        # -------------------------------------------------
+
+        if (
+            "timeout" in reason
+            or "network" in reason
+            or "api unavailable" in reason
+        ):
+
+            action_type = "retry_payment"
+
+            message = (
+                "Temporary payment failure detected. "
+                "Payment can be retried."
+            )
+
+        # -------------------------------------------------
+        # INSUFFICIENT FUNDS
+        # -------------------------------------------------
+
+        elif "insufficient" in reason:
+
+            action_type = "retry_after_funds_added"
+
+            message = (
+                "Customer should add funds before "
+                "retrying the payment."
+            )
+
+        # -------------------------------------------------
+        # EXPIRED CARD / INVALID DETAILS
+        # -------------------------------------------------
+
+        elif (
+            "expired" in reason
+            or "invalid payment details" in reason
+        ):
+
+            action_type = (
+                "ask_customer_to_update_payment_method"
+            )
+
+            message = (
+                "Customer should update payment details "
+                "before retrying."
+            )
+
+        # -------------------------------------------------
+        # BANK DECLINED
+        # -------------------------------------------------
+
+        elif "declined" in reason:
+
+            action_type = "ask_customer_to_contact_bank"
+
+            message = (
+                "Customer should contact their bank "
+                "or use another payment method."
+            )
+
+        # -------------------------------------------------
+        # HIGH VALUE
+        # -------------------------------------------------
+
+        elif "high-value" in reason:
+
+            action_type = "require_human_review"
+
+            message = (
+                "High-value payment requires human "
+                "approval before recovery."
+            )
+
+        # -------------------------------------------------
+        # BLOCKED CASES
+        # -------------------------------------------------
+
+        elif (
+            "fraud" in reason
+            or "opted out" in reason
+            or "retry limit" in reason
+        ):
+
+            action_type = "do_not_retry"
+
+            message = (
+                "Automatic recovery should not be "
+                "performed for this payment."
+            )
+
+        # -------------------------------------------------
+        # ALREADY CAPTURED
+        # -------------------------------------------------
+
+        elif "already captured" in reason:
+
+            action_type = "do_not_retry"
+
+            message = (
+                "Payment is already captured. "
+                "No retry is required."
+            )
+
+        # -------------------------------------------------
+        # DUPLICATE WEBHOOK
+        # -------------------------------------------------
+
+        elif "duplicate webhook" in reason:
+
+            action_type = "do_not_retry"
+
+            message = (
+                "Duplicate webhook detected. "
+                "Original payment record should be retained."
+            )
+
+        # -------------------------------------------------
+        # LLM TIMEOUT
+        # -------------------------------------------------
+
+        elif "llm timeout" in reason:
+
+            action_type = "retry_payment"
+
+            message = (
+                "AI diagnosis timed out. "
+                "Fallback recovery process can retry diagnosis."
+            )
+
+        # -------------------------------------------------
+        # DEFAULT
+        # -------------------------------------------------
+
+        else:
+
+            action_type = "retry_payment"
+
+            message = (
+                "Payment can be evaluated for recovery."
+            )
+
+        action = RecoveryAction(
+            recovery_case_id=case.id,
+            action_type=action_type,
+            message=message,
+            status="pending"
+        )
+
+        actions.append(action)
+
+    db.add_all(actions)
+    db.commit()
+
+    # =====================================================
+    # 7. DATASET SUMMARY
+    # =====================================================
+
+    print()
+    print("=" * 60)
+    print("RecoverAI synthetic evaluation dataset created")
+    print("=" * 60)
+
+    print(f"Customers:        {len(customers)}")
+    print(f"Payments:         {len(payments)}")
+    print(f"Attempts:         {len(attempts)}")
+    print(f"Recovery cases:   {len(recovery_cases)}")
+    print(f"Recovery actions: {len(actions)}")
+
+    print("=" * 60)
+
+    # =====================================================
+    # 8. FAILURE DISTRIBUTION
+    # =====================================================
+
+    print()
+    print("Failure distribution:")
+
+    distribution = {}
+
+    for payment in payments:
+
+        reason = payment.failure_reason
+
+        distribution[reason] = (
+            distribution.get(reason, 0) + 1
+        )
+
+    for reason, count in sorted(
+        distribution.items(),
+        key=lambda item: item[1],
+        reverse=True
+    ):
+
+        print(
+            f"{reason:<45} {count}"
+        )
+
+    print("=" * 60)
+
 
 except Exception as e:
+
     db.rollback()
-    print("❌ Error:", e)
+
+    print()
+    print("ERROR while creating synthetic dataset:")
+    print(e)
+
 
 finally:
+
     db.close()

@@ -1,109 +1,251 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>RecoverAI Dashboard</title>
+
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
+    <!-- =====================================================
+         HEADER
+    ====================================================== -->
+
     <header>
-    <div class="header-content">
-        <div>
-            <h1>RecoverAI</h1>
-            <p>Payment Recovery Dashboard</p>
+
+        <div class="header-content">
+
+            <div>
+                <h1>RecoverAI</h1>
+                <p>Payment Recovery Dashboard</p>
+            </div>
+
+            <button
+                id="refresh-button"
+                onclick="loadDashboard()"
+            >
+                Refresh Dashboard
+            </button>
+
         </div>
 
-        <button id="refresh-button" onclick="loadDashboard()">
-            Refresh Dashboard
-        </button>
-    </div>
     </header>
+
+
+    <!-- =====================================================
+         MAIN DASHBOARD
+    ====================================================== -->
 
     <main>
 
-        <!-- Statistics -->
+
+        <!-- =================================================
+             STATISTICS
+        ================================================== -->
+
         <section class="stats">
 
+
+            <!-- Total Payments -->
+
             <div class="card">
+
                 <h3>Total Payments</h3>
-                <p id="total-payments">0</p>
+
+                <p id="total-payments">
+                    0
+                </p>
+
             </div>
 
+
+            <!-- Failed Payments -->
+
             <div class="card">
+
                 <h3>Failed Payments</h3>
-                <p id="failed-payments">0</p>
+
+                <p id="failed-payments">
+                    0
+                </p>
+
             </div>
 
+
+            <!-- Successful Payments -->
+
             <div class="card">
+
+                <h3>Successful Payments</h3>
+
+                <p id="successful-payments">
+                    0
+                </p>
+
+            </div>
+
+
+            <!-- Confirmed Successful Recoveries -->
+
+            <div class="card">
+
+                <h3>Confirmed Successful Payments</h3>
+
+                <p id="confirmed-successful-payments">
+                    0
+                </p>
+
+            </div>
+
+
+            <!-- Recovery Rate -->
+
+            <div class="card">
+
+                <h3>Confirmed Payment Recovery Rate</h3>
+
+                <p id="recovery-rate">
+                    0%
+                </p>
+
+            </div>
+
+
+            <!-- Executed Actions -->
+
+            <div class="card">
+
                 <h3>Executed Actions</h3>
-                <p id="executed-actions">0</p>
+
+                <p id="executed-actions">
+                    0
+                </p>
+
             </div>
 
+
+            <!-- Blocked Actions -->
+
             <div class="card">
+
                 <h3>Blocked Actions</h3>
-                <p id="blocked-actions">0</p>
+
+                <p id="blocked-actions">
+                    0
+                </p>
+
             </div>
 
+
+            <!-- Human Review -->
+
             <div class="card">
+
                 <h3>Human Review</h3>
-                <p id="human-review">0</p>
+
+                <p id="human-review">
+                    0
+                </p>
+
             </div>
 
         </section>
 
-        <!-- Payments -->
+
+        <!-- =================================================
+             PAYMENTS
+        ================================================== -->
+
         <section class="panel">
 
-            <h2>Failed Payments</h2>
+            <h2>Payments</h2>
 
-            <table>
+            <div class="table-container">
 
-                <thead>
-                    <tr>
-                        <th>Payment ID</th>
-                        <th>Amount</th>
-                        <th>Currency</th>
-                        <th>Status</th>
-                        <th>Failure Reason</th>
-                    </tr>
-                </thead>
+                <table>
 
-                <tbody id="payments-table">
-                </tbody>
+                    <thead>
 
-            </table>
+                        <tr>
+
+                            <th>Payment ID</th>
+
+                            <th>Amount</th>
+
+                            <th>Currency</th>
+
+                            <th>Status</th>
+
+                            <th>Failure Reason</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="payments-table">
+
+                    </tbody>
+
+                </table>
+
+            </div>
 
         </section>
 
-        <!-- Payment Attempts -->
+
+        <!-- =================================================
+             RECOVERY ACTIONS
+        ================================================== -->
+
         <section class="panel">
 
             <h2>Recovery Actions</h2>
 
-            <table>
+            <div class="table-container">
 
-                <thead>
-                    <tr>
-                        <th>Attempt ID</th>
-                        <th>Payment ID</th>
-                        <th>Status</th>
-                        <th>Failure Reason</th>
-                    </tr>
-                </thead>
+                <table>
 
-                <tbody id="attempts-table">
-                </tbody>
+                    <thead>
 
-            </table>
+                        <tr>
+
+                            <th>Attempt ID</th>
+
+                            <th>Payment ID</th>
+
+                            <th>Status</th>
+
+                            <th>Failure Reason</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="attempts-table">
+
+                    </tbody>
+
+                </table>
+
+            </div>
 
         </section>
 
+
     </main>
+
+
+    <!-- =====================================================
+         JAVASCRIPT
+    ====================================================== -->
 
     <script src="app.js"></script>
 
 </body>
+
 </html>

@@ -3,10 +3,15 @@ from backend import models
 
 def calculate_metrics(db):
     """
-    Phase 9: Metrics & Evaluation
+    Phase 9/12: Metrics & Evaluation
 
-    Calculates recovery performance using unique payments
-    instead of counting repeated attempts as separate recoveries.
+    Calculates confirmed payment recovery metrics.
+
+    A payment is considered successfully recovered only when
+    the actual Payment record has status = "success".
+
+    Repeated payment attempts for the same payment are counted
+    only once when calculating confirmed recoveries.
     """
 
     # ---------------------------------------------------------
@@ -36,6 +41,27 @@ def calculate_metrics(db):
     total_attempts = len(attempts)
 
     # ---------------------------------------------------------
+    # CONFIRMED RECOVERIES
+    # ---------------------------------------------------------
+    #
+    # IMPORTANT:
+    # We use Payment.status as the source of truth.
+    #
+    # A "success" PaymentAttempt alone does NOT mean the
+    # payment was successfully recovered.
+    #
+
+    confirmed_recovered_payment_ids = {
+        payment.id
+        for payment in db.query(models.Payment).all()
+        if payment.status == "success"
+    }
+
+    confirmed_recovered_payments = len(
+        confirmed_recovered_payment_ids
+    )
+
+    # ---------------------------------------------------------
     # EXECUTED ACTIONS
     # ---------------------------------------------------------
 
@@ -43,27 +69,15 @@ def calculate_metrics(db):
         "retry_scheduled",
         "waiting_for_funds",
         "customer_action_required",
-        "bank_contact_required"
+        "bank_contact_required",
+        "success"
     }
 
-    executed_attempts = [
-        attempt
+    executed_actions = sum(
+        1
         for attempt in attempts
         if attempt.status in executed_statuses
-    ]
-
-    executed_actions = len(executed_attempts)
-
-    # ---------------------------------------------------------
-    # UNIQUE PAYMENTS WITH EXECUTED RECOVERY
-    # ---------------------------------------------------------
-
-    executed_payment_ids = {
-        attempt.payment_id
-        for attempt in executed_attempts
-    }
-
-    unique_recovered_payments = len(executed_payment_ids)
+    )
 
     # ---------------------------------------------------------
     # BLOCKED ACTIONS
@@ -86,30 +100,57 @@ def calculate_metrics(db):
     )
 
     # ---------------------------------------------------------
-    # RECOVERY RATE
+    # CONFIRMED PAYMENT RECOVERY RATE
     # ---------------------------------------------------------
+    #
+    # Current failed payments + confirmed recovered payments
+    # represents the original failed-payment population.
+    #
+    # Example:
+    #
+    # 1 confirmed recovery
+    # 14 currently failed
+    #
+    # Original failed population = 1 + 14 = 15
+    #
+    # Recovery rate = 1 / 15 * 100 = 6.67%
+    #
 
-    if failed_payments > 0:
-        recovery_rate = round(
-            (unique_recovered_payments / failed_payments) * 100,
+    original_failed_payment_population = (
+        confirmed_recovered_payments
+        + failed_payments
+    )
+
+    if original_failed_payment_population > 0:
+
+        confirmed_recovery_rate = round(
+            (
+                confirmed_recovered_payments
+                / original_failed_payment_population
+            ) * 100,
             2
         )
 
-        # Never allow the rate to exceed 100%.
-        recovery_rate = min(recovery_rate, 100)
+        # Safety protection.
+        confirmed_recovery_rate = min(
+            confirmed_recovery_rate,
+            100
+        )
 
     else:
-        recovery_rate = 0
+        confirmed_recovery_rate = 0
 
     # ---------------------------------------------------------
     # BLOCK RATE
     # ---------------------------------------------------------
 
     if total_attempts > 0:
+
         blocked_rate = round(
             (blocked_actions / total_attempts) * 100,
             2
         )
+
     else:
         blocked_rate = 0
 
@@ -118,10 +159,12 @@ def calculate_metrics(db):
     # ---------------------------------------------------------
 
     if total_attempts > 0:
+
         human_review_rate = round(
             (human_review_cases / total_attempts) * 100,
             2
         )
+
     else:
         human_review_rate = 0
 
@@ -139,13 +182,17 @@ def calculate_metrics(db):
         "recovery": {
             "total_attempts": total_attempts,
             "executed_actions": executed_actions,
-            "unique_recovered_payments": unique_recovered_payments,
+            "confirmed_recovered_payments": (
+                confirmed_recovered_payments
+            ),
             "blocked_actions": blocked_actions,
             "human_review_cases": human_review_cases
         },
 
         "performance": {
-            "recovery_rate_percent": recovery_rate,
+            "confirmed_recovery_rate_percent": (
+                confirmed_recovery_rate
+            ),
             "blocked_rate_percent": blocked_rate,
             "human_review_rate_percent": human_review_rate
         }

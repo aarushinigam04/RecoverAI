@@ -1,156 +1,393 @@
 async function loadDashboard() {
 
-    const refreshButton = document.getElementById("refresh-button");
+    const refreshButton =
+        document.getElementById("refresh-button");
+
+
+    // ---------------------------------------------------------
+    // Refresh button state
+    // ---------------------------------------------------------
 
     if (refreshButton) {
+
         refreshButton.textContent = "Refreshing...";
+
         refreshButton.disabled = true;
+
     }
 
+
     try {
-        const response = await fetch("http://127.0.0.1:8000/dashboard");
+
+        // -----------------------------------------------------
+        // Get dashboard data from FastAPI
+        // -----------------------------------------------------
+
+        const response = await fetch(
+            "http://127.0.0.1:8000/dashboard"
+        );
+
 
         if (!response.ok) {
-            throw new Error("Failed to load dashboard data");
+
+            throw new Error(
+                "Failed to load dashboard data"
+            );
+
         }
+
 
         const data = await response.json();
 
-        // -----------------------------
-        // Statistics
-        // -----------------------------
 
-        document.getElementById("total-payments").textContent =
-            data.statistics.total_payments;
-
-        document.getElementById("failed-payments").textContent =
-            data.statistics.failed_payments;
-
-        document.getElementById("executed-actions").textContent =
-            data.statistics.executed_actions;
-
-        document.getElementById("blocked-actions").textContent =
-            data.statistics.blocked_actions;
-
-        document.getElementById("human-review").textContent =
-            data.statistics.human_review_cases;
+        console.log("Dashboard data:", data);
 
 
-        // -----------------------------
-        // Failed Payments Table
-        // -----------------------------
+        // =====================================================
+        // STATISTICS
+        // =====================================================
+
+        const statistics = data.statistics;
+
+
+        // Total payments
+
+        document.getElementById(
+            "total-payments"
+        ).textContent =
+            statistics.total_payments;
+
+
+        // Failed payments
+
+        document.getElementById(
+            "failed-payments"
+        ).textContent =
+            statistics.failed_payments;
+
+
+        // Successful payments
+
+        document.getElementById(
+            "successful-payments"
+        ).textContent =
+            statistics.successful_payments;
+
+
+        // Confirmed successful recoveries
+
+        document.getElementById(
+            "confirmed-successful-payments"
+        ).textContent =
+            statistics.confirmed_successful_payments;
+
+
+        // Confirmed recovery rate
+
+        document.getElementById(
+            "recovery-rate"
+        ).textContent =
+            statistics.confirmed_payment_recovery_rate_percent
+            + "%";
+
+
+        // Executed actions
+
+        document.getElementById(
+            "executed-actions"
+        ).textContent =
+            statistics.executed_actions;
+
+
+        // Blocked actions
+
+        document.getElementById(
+            "blocked-actions"
+        ).textContent =
+            statistics.blocked_actions;
+
+
+        // Human review
+
+        document.getElementById(
+            "human-review"
+        ).textContent =
+            statistics.human_review_cases;
+
+
+        // =====================================================
+        // PAYMENTS TABLE
+        // =====================================================
 
         const paymentsTable =
-            document.getElementById("payments-table");
+            document.getElementById(
+                "payments-table"
+            );
+
 
         paymentsTable.innerHTML = "";
 
-        data.payments.forEach(payment => {
 
-            const row = document.createElement("tr");
+        data.payments.forEach(
+            payment => {
 
-            let statusClass = "status-other";
+                const row =
+                    document.createElement("tr");
 
-            if (payment.status === "failed") {
-                statusClass = "status-failed";
-            } else if (payment.status === "success") {
-                statusClass = "status-success";
+
+                // -------------------------------------------------
+                // Status class
+                // -------------------------------------------------
+
+                let statusClass =
+                    "status-other";
+
+
+                if (
+                    payment.status === "failed"
+                ) {
+
+                    statusClass =
+                        "status-failed";
+
+                }
+
+                else if (
+                    payment.status === "success"
+                ) {
+
+                    statusClass =
+                        "status-success";
+
+                }
+
+
+                // -------------------------------------------------
+                // Row
+                // -------------------------------------------------
+
+                row.innerHTML = `
+
+                    <td>
+                        ${payment.payment_id}
+                    </td>
+
+                    <td>
+                        ₹${Number(
+                            payment.amount
+                        ).toLocaleString("en-IN")}
+                    </td>
+
+                    <td>
+                        ${payment.currency}
+                    </td>
+
+                    <td>
+
+                        <span
+                            class="status-badge ${statusClass}"
+                        >
+                            ${payment.status}
+                        </span>
+
+                    </td>
+
+                    <td>
+                        ${payment.failure_reason || "-"}
+                    </td>
+
+                `;
+
+
+                paymentsTable.appendChild(row);
+
             }
-
-            row.innerHTML = `
-                <td>${payment.payment_id}</td>
-                <td>₹${payment.amount}</td>
-                <td>${payment.currency}</td>
-                <td>
-                    <span class="status-badge ${statusClass}">
-                        ${payment.status}
-                    </span>
-                </td>
-                <td>${payment.failure_reason || "-"}</td>
-            `;
-
-            paymentsTable.appendChild(row);
-        });
+        );
 
 
-        // -----------------------------
-        // Recovery Actions Table
-        // -----------------------------
+        // =====================================================
+        // RECOVERY ACTIONS TABLE
+        // =====================================================
 
         const attemptsTable =
-            document.getElementById("attempts-table");
+            document.getElementById(
+                "attempts-table"
+            );
+
 
         attemptsTable.innerHTML = "";
 
-        data.payment_attempts.forEach(attempt => {
 
-            let attemptStatusClass = "status-other";
+        data.payment_attempts.forEach(
+            attempt => {
 
-            const status = attempt.status.toLowerCase();
 
-            if (status === "failed") {
+                let attemptStatusClass =
+                    "status-other";
 
-                attemptStatusClass = "status-failed";
 
-            } else if (status === "success") {
+                const status =
+                    (
+                        attempt.status || ""
+                    ).toLowerCase();
 
-                attemptStatusClass = "status-success";
 
-            } else if (
-                status === "retry_scheduled" ||
-                status === "waiting_for_funds" ||
-                status === "customer_action_required" ||
-                status === "bank_contact_required"
-            ) {
+                // -------------------------------------------------
+                // Status mapping
+                // -------------------------------------------------
 
-                attemptStatusClass = "status-executed";
+                if (
+                    status === "failed"
+                ) {
 
-            } else if (status === "retry_blocked") {
+                    attemptStatusClass =
+                        "status-failed";
 
-                attemptStatusClass = "status-blocked";
+                }
 
-            } else if (status === "human_review_required") {
+                else if (
+                    status === "success"
+                ) {
 
-                attemptStatusClass = "status-review";
+                    attemptStatusClass =
+                        "status-success";
 
-            } else if (status === "pending") {
+                }
 
-                attemptStatusClass = "status-pending";
+                else if (
+                    status === "retry_scheduled" ||
+
+                    status === "waiting_for_funds" ||
+
+                    status === "customer_action_required" ||
+
+                    status === "bank_contact_required"
+                ) {
+
+                    attemptStatusClass =
+                        "status-executed";
+
+                }
+
+                else if (
+                    status === "retry_blocked" ||
+
+                    status === "blocked"
+                ) {
+
+                    attemptStatusClass =
+                        "status-blocked";
+
+                }
+
+                else if (
+                    status === "human_review_required" ||
+
+                    status === "needs_human"
+                ) {
+
+                    attemptStatusClass =
+                        "status-review";
+
+                }
+
+                else if (
+                    status === "pending"
+                ) {
+
+                    attemptStatusClass =
+                        "status-pending";
+
+                }
+
+
+                // -------------------------------------------------
+                // Create row
+                // -------------------------------------------------
+
+                const row =
+                    document.createElement("tr");
+
+
+                row.innerHTML = `
+
+                    <td>
+                        ${attempt.attempt_id}
+                    </td>
+
+                    <td>
+                        ${attempt.payment_id}
+                    </td>
+
+                    <td>
+
+                        <span
+                            class="status-badge ${attemptStatusClass}"
+                        >
+                            ${attempt.status}
+                        </span>
+
+                    </td>
+
+                    <td>
+                        ${attempt.failure_reason || "-"}
+                    </td>
+
+                `;
+
+
+                attemptsTable.appendChild(row);
+
             }
+        );
 
-            const row = document.createElement("tr");
 
-            row.innerHTML = `
-                <td>${attempt.attempt_id}</td>
-                <td>${attempt.payment_id}</td>
-                <td>
-                    <span class="status-badge ${attemptStatusClass}">
-                        ${attempt.status}
-                    </span>
-                </td>
-                <td>${attempt.failure_reason || "-"}</td>
-            `;
+    }
 
-            attemptsTable.appendChild(row);
-        });
+    catch (error) {
 
-    } catch (error) {
+        console.error(
+            "Dashboard error:",
+            error
+        );
 
-        console.error("Dashboard error:", error);
 
-        alert("Unable to load dashboard data.");
+        alert(
+            "Unable to load dashboard data."
+        );
 
-    } finally {
+    }
+
+
+    finally {
 
         if (refreshButton) {
-            refreshButton.textContent = "Refresh Dashboard";
-            refreshButton.disabled = false;
+
+            refreshButton.textContent =
+                "Refresh Dashboard";
+
+            refreshButton.disabled =
+                false;
+
         }
+
     }
+
 }
 
 
-// Load dashboard when page opens
+// =============================================================
+// INITIAL LOAD
+// =============================================================
+
 loadDashboard();
-// Automatically refresh dashboard every 60 seconds
-setInterval(loadDashboard, 60000);
+
+
+// =============================================================
+// AUTOMATIC REFRESH
+// =============================================================
+
+setInterval(
+    loadDashboard,
+    60000
+);

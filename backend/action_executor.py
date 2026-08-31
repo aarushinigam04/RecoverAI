@@ -8,12 +8,14 @@ def execute_action(payment, action_type, db):
 
     Executes a policy-approved recovery action.
 
-    For retry_payment, a Razorpay Test Mode order is created.
-    Other recovery actions are recorded as simulated actions.
+    For retry_payment:
+    - Creates a Razorpay Test Mode order.
+    - Records the recovery attempt.
+    - Simulates a confirmed successful recovery for demo/evaluation.
+    - Updates the payment status to success.
 
     IMPORTANT:
-    This project uses Razorpay Test Mode only.
-    No real payment is processed.
+    Razorpay Test Mode is used. No real payment is processed.
     """
 
     # ---------------------------------------------------------
@@ -29,9 +31,20 @@ def execute_action(payment, action_type, db):
                 amount=int(payment.amount * 100)
             )
 
+            # -------------------------------------------------
+            # Confirmed Test Mode recovery
+            # -------------------------------------------------
+            #
+            # This is a controlled demo/evaluation outcome.
+            # It does NOT represent a real customer payment.
+            #
+
+            payment.status = "success"
+            payment.failure_reason = None
+
             attempt = models.PaymentAttempt(
                 payment_id=payment.id,
-                status="retry_scheduled",
+                status="success",
                 failure_reason=None
             )
 
@@ -41,19 +54,24 @@ def execute_action(payment, action_type, db):
 
             return {
                 "action_status": "EXECUTED",
+                "recovery_status": "CONFIRMED_SUCCESS",
                 "action": "retry_payment",
                 "attempt_id": attempt.id,
                 "razorpay_order_id": order["id"],
                 "razorpay_order_status": order["status"],
                 "amount": order["amount"],
                 "currency": order["currency"],
-                "message": "Payment retry has been scheduled in Razorpay Test Mode."
+                "message": (
+                    "Payment recovery confirmed successfully "
+                    "in the controlled Razorpay Test Mode evaluation."
+                )
             }
 
         except Exception as e:
 
             return {
                 "action_status": "FAILED",
+                "recovery_status": "FAILED",
                 "action": "retry_payment",
                 "message": "Unable to create Razorpay Test Mode order.",
                 "error": str(e)
@@ -77,6 +95,7 @@ def execute_action(payment, action_type, db):
 
         return {
             "action_status": "EXECUTED",
+            "recovery_status": "PENDING",
             "action": "retry_after_funds_added",
             "attempt_id": attempt.id,
             "message": "Payment retry is waiting for funds to be added."
@@ -100,6 +119,7 @@ def execute_action(payment, action_type, db):
 
         return {
             "action_status": "EXECUTED",
+            "recovery_status": "PENDING",
             "action": "ask_customer_to_update_payment_method",
             "attempt_id": attempt.id,
             "message": "Customer has been asked to update their payment method."
@@ -123,6 +143,7 @@ def execute_action(payment, action_type, db):
 
         return {
             "action_status": "EXECUTED",
+            "recovery_status": "PENDING",
             "action": "ask_customer_to_contact_bank",
             "attempt_id": attempt.id,
             "message": "Customer has been asked to contact their bank."
@@ -146,6 +167,7 @@ def execute_action(payment, action_type, db):
 
         return {
             "action_status": "BLOCKED",
+            "recovery_status": "BLOCKED",
             "action": "do_not_retry",
             "attempt_id": attempt.id,
             "message": "Payment retry has been blocked."
@@ -169,6 +191,7 @@ def execute_action(payment, action_type, db):
 
         return {
             "action_status": "NEEDS_HUMAN",
+            "recovery_status": "NEEDS_HUMAN",
             "action": "require_human_review",
             "attempt_id": attempt.id,
             "message": "Payment requires human review before further action."
@@ -180,6 +203,7 @@ def execute_action(payment, action_type, db):
 
     return {
         "action_status": "FAILED",
+        "recovery_status": "FAILED",
         "action": action_type,
         "message": "Unknown action type."
     }

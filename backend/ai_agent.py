@@ -8,14 +8,21 @@ def diagnose_payment(context):
 
     payment = context["payment"]
 
-    failure_reason = (payment.get("failure_reason") or "").lower()
+    failure_reason = (payment.get("failure_reason") or "").lower().strip()
     amount = payment.get("amount") or 0
 
     payment_history = context.get("payment_history", [])
     attempt_history = context.get("attempt_history", [])
     recovery_history = context.get("recovery_history", [])
 
-    # Diagnose the payment failure
+    # =========================================================
+    # DIAGNOSE PAYMENT FAILURE
+    # =========================================================
+
+    # ---------------------------------------------------------
+    # INSUFFICIENT FUNDS
+    # ---------------------------------------------------------
+
     if "insufficient" in failure_reason or "fund" in failure_reason:
         category = "Insufficient Funds"
         reason = (
@@ -27,90 +34,193 @@ def diagnose_payment(context):
         delay_minutes = 30
         success_probability = 0.75
 
+    # ---------------------------------------------------------
+    # INVALID PAYMENT DETAILS
+    # ---------------------------------------------------------
+
     elif (
         "expired" in failure_reason
-         or "invalid payment details" in failure_reason
-         or "invalid payment id" in failure_reason
-         or "incorrect cvv" in failure_reason
-         or "invalid card" in failure_reason
-):
-         category = "Invalid Payment Details"
+        or "invalid payment details" in failure_reason
+        or "invalid payment id" in failure_reason
+        or "incorrect cvv" in failure_reason
+        or "invalid card" in failure_reason
+    ):
+        category = "Invalid Payment Details"
 
-         if "expired" in failure_reason:
-             reason = "The payment method appears to have expired."
-         elif "invalid payment id" in failure_reason:
-             reason = "The payment identifier provided for the transaction appears to be invalid."
-         elif "incorrect cvv" in failure_reason:
-             reason = "The card verification information appears to be incorrect."
-         elif "invalid card" in failure_reason:
-             reason = "The provided card information appears to be invalid."
-         else:
-             reason = "The supplied payment details appear to be invalid."
+        if "expired" in failure_reason:
+            reason = "The payment method appears to have expired."
+        elif "invalid payment id" in failure_reason:
+            reason = (
+                "The payment identifier provided for the transaction "
+                "appears to be invalid."
+            )
+        elif "incorrect cvv" in failure_reason:
+            reason = (
+                "The card verification information appears to be incorrect."
+            )
+        elif "invalid card" in failure_reason:
+            reason = (
+                "The provided card information appears to be invalid."
+            )
+        else:
+            reason = (
+                "The supplied payment details appear to be invalid."
+            )
 
-         confidence = 0.95
-         action = "ask_customer_to_update_payment_method"
-         delay_minutes = 0
-         success_probability = 0.35
+        confidence = 0.95
+        action = "ask_customer_to_update_payment_method"
+        delay_minutes = 0
+        success_probability = 0.35
 
-    elif "declined" in failure_reason:
+    # ---------------------------------------------------------
+    # BANK DECLINED
+    # ---------------------------------------------------------
+
+    elif "declined" in failure_reason or "decline" in failure_reason:
         category = "Bank Declined"
-        reason = "The customer's bank appears to have declined the payment."
+        reason = (
+            "The customer's bank appears to have declined the payment."
+        )
         confidence = 0.92
         action = "ask_customer_to_contact_bank"
         delay_minutes = 0
         success_probability = 0.40
 
-    elif "timeout" in failure_reason:
+    # ---------------------------------------------------------
+    # PAYMENT / NETWORK TIMEOUT
+    # ---------------------------------------------------------
+
+    elif "timeout" in failure_reason or "timed out" in failure_reason:
         category = "Payment Timeout"
-        reason = "The payment attempt appears to have timed out."
+        reason = (
+            "The payment attempt appears to have timed out."
+        )
         confidence = 0.94
         action = "retry_payment"
         delay_minutes = 5
         success_probability = 0.70
 
+    # ---------------------------------------------------------
+    # NETWORK CONNECTIVITY
+    # ---------------------------------------------------------
+
+    elif "network connectivity" in failure_reason:
+        category = "Network Connectivity Issue"
+        reason = (
+            "The payment could not be completed because of a "
+            "network connectivity issue."
+        )
+        confidence = 0.93
+        action = "retry_payment"
+        delay_minutes = 10
+        success_probability = 0.70
+
+    # ---------------------------------------------------------
+    # PAYMENT API UNAVAILABLE
+    # ---------------------------------------------------------
+
     elif "api unavailable" in failure_reason:
         category = "Payment Service Unavailable"
-        reason = "The payment service was temporarily unavailable."
+        reason = (
+            "The payment service was temporarily unavailable."
+        )
         confidence = 0.96
         action = "retry_payment"
         delay_minutes = 10
         success_probability = 0.80
 
+    # ---------------------------------------------------------
+    # LLM TIMEOUT
+    # ---------------------------------------------------------
+
+    elif "llm timeout" in failure_reason:
+        category = "LLM Timeout"
+        reason = (
+            "The AI diagnosis service timed out, so the "
+            "fallback recovery process should be used."
+        )
+        confidence = 0.95
+        action = "retry_payment"
+        delay_minutes = 10
+        success_probability = 0.60
+
+    # ---------------------------------------------------------
+    # PAYMENT ALREADY CAPTURED
+    # ---------------------------------------------------------
+
     elif "already captured" in failure_reason:
         category = "Payment Already Captured"
-        reason = "The payment appears to have already been captured."
-        confidence = 0.99
-        action = "do_not_retry"
-        delay_minutes = 0
-        success_probability = 0.0
-
-    elif "duplicate webhook" in failure_reason:
-        category = "Duplicate Event"
-        reason = "The payment event appears to be a duplicate webhook."
-        confidence = 0.99
-        action = "do_not_retry"
-        delay_minutes = 0
-        success_probability = 0.0
-
-    elif "retry limit" in failure_reason:
-        category = "Retry Limit Exceeded"
-        reason = "The payment has exceeded the permitted retry limit."
-        confidence = 0.99
-        action = "require_human_review"
-        delay_minutes = 0
-        success_probability = 0.10
-
-    elif "customer opted out" in failure_reason:
-        category = "Customer Opted Out"
         reason = (
-            "The customer has opted out of further payment recovery attempts."
+            "The payment appears to have already been captured."
         )
         confidence = 0.99
         action = "do_not_retry"
         delay_minutes = 0
         success_probability = 0.0
 
-    elif "high-value" in failure_reason:
+    # ---------------------------------------------------------
+    # DUPLICATE WEBHOOK
+    # ---------------------------------------------------------
+
+    elif "duplicate webhook" in failure_reason:
+        category = "Duplicate Event"
+        reason = (
+            "The payment event appears to be a duplicate webhook."
+        )
+        confidence = 0.99
+        action = "do_not_retry"
+        delay_minutes = 0
+        success_probability = 0.0
+
+    # ---------------------------------------------------------
+    # RETRY LIMIT EXCEEDED
+    # ---------------------------------------------------------
+
+    elif "retry limit" in failure_reason:
+        category = "Retry Limit Exceeded"
+        reason = (
+            "The payment has exceeded the permitted retry limit."
+        )
+        confidence = 0.99
+        action = "require_human_review"
+        delay_minutes = 0
+        success_probability = 0.10
+
+    # ---------------------------------------------------------
+    # FRAUD DETECTED
+    # ---------------------------------------------------------
+
+    elif "fraud" in failure_reason:
+        category = "Fraud Detected"
+        reason = (
+            "The payment has been flagged as potentially fraudulent "
+            "and must not be automatically retried."
+        )
+        confidence = 0.99
+        action = "do_not_retry"
+        delay_minutes = 0
+        success_probability = 0.0
+
+    # ---------------------------------------------------------
+    # CUSTOMER OPTED OUT
+    # ---------------------------------------------------------
+
+    elif "customer opted out" in failure_reason or "opted out" in failure_reason:
+        category = "Customer Opted Out"
+        reason = (
+            "The customer has opted out of further payment "
+            "recovery attempts."
+        )
+        confidence = 0.99
+        action = "do_not_retry"
+        delay_minutes = 0
+        success_probability = 0.0
+
+    # ---------------------------------------------------------
+    # HIGH-VALUE PAYMENT
+    # ---------------------------------------------------------
+
+    elif "high-value" in failure_reason or "approval" in failure_reason:
         category = "High-Value Payment"
         reason = (
             "The payment requires additional review because "
@@ -120,6 +230,10 @@ def diagnose_payment(context):
         action = "require_human_review"
         delay_minutes = 0
         success_probability = 0.50
+
+    # ---------------------------------------------------------
+    # OTHER FAILURE
+    # ---------------------------------------------------------
 
     else:
         category = "Other Failure"
@@ -132,22 +246,28 @@ def diagnose_payment(context):
         delay_minutes = 15
         success_probability = 0.40
 
-    # Use payment context to improve risk assessment
+    # =========================================================
+    # RISK ASSESSMENT
+    # =========================================================
+
     risk_flags = []
 
-    if amount >= 2000:
+    # Keep this aligned with the Policy Engine threshold.
+    if amount >= 50000:
         risk_flags.append("high_value_payment")
 
     if len(attempt_history) >= 3:
         risk_flags.append("multiple_payment_attempts")
 
     failed_previous_payments = sum(
-        1 for p in payment_history
+        1
+        for p in payment_history
         if p.get("status") == "failed"
     )
 
     successful_previous_payments = sum(
-        1 for p in payment_history
+        1
+        for p in payment_history
         if p.get("status") in ["success", "captured", "paid"]
     )
 
@@ -160,7 +280,14 @@ def diagnose_payment(context):
     if action in ["do_not_retry", "require_human_review"]:
         risk_flags.append("restricted_recovery_action")
 
-    # Escalate uncertain high-risk situations
+    # Fraud gets an explicit risk flag.
+    if category == "Fraud Detected":
+        risk_flags.append("fraud_detected")
+
+    # =========================================================
+    # LOW CONFIDENCE SAFETY ESCALATION
+    # =========================================================
+
     if confidence < 0.60:
         action = "require_human_review"
         requires_human = True
@@ -170,10 +297,18 @@ def diagnose_payment(context):
     else:
         requires_human = action == "require_human_review"
 
+    # =========================================================
+    # EXPECTED RECOVERY
+    # =========================================================
+
     expected_recovery = round(
         amount * success_probability,
         2
     )
+
+    # =========================================================
+    # FINAL AUDITABLE RESPONSE
+    # =========================================================
 
     return {
         "diagnosis": {
@@ -181,19 +316,23 @@ def diagnose_payment(context):
             "reason": reason,
             "confidence": confidence
         },
+
         "recovery": {
             "recommended_action": action,
             "delay_minutes": delay_minutes,
             "success_probability": success_probability,
             "expected_recovery": expected_recovery
         },
+
         "risk_flags": risk_flags,
+
         "requires_human": requires_human,
+
         "explanation": (
             f"The payment was classified as '{category}' "
             f"with {confidence:.0%} diagnostic confidence. "
-            f"The recommendation considers {successful_previous_payments} "
-            f"previous successful payments and "
-            f"{failed_previous_payments} previous failed payments."
+            f"The recommendation considers "
+            f"{successful_previous_payments} previous successful payments "
+            f"and {failed_previous_payments} previous failed payments."
         )
     }
