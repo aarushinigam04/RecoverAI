@@ -102,32 +102,6 @@ from backend.policy_engine import evaluate_policy
 # Human-review cases remain in the denominator.
 #
 #
-# AUTOMATED-ATTEMPT FUNNEL (separate, honest funnel metric)
-# ------------------------------------------------------------
-# "automated_recovery_rate_percent" is recovered / ALL failed
-# payments. Because fraud, opted-out, high-value and unknown
-# categories carry 0% frozen recovery, that rate is structurally
-# capped well below the per-attempt success rate.
-#
-# A second, industry-standard funnel is also reported:
-#
-#   success on automated attempts =
-#       expected recoveries from automated actions
-#       -------------------------------------------------
-#       payments where RecoverAI took an automated action
-#       (retry_payment OR payment_link)
-#
-# Human-review, blocked, fraud, opted-out and high-value
-# payments are NOT in either the numerator or the denominator
-# of this funnel, because no automated action was taken on them.
-#
-# This funnel uses RecoverAI's REAL actions, never an idealized
-# oracle. It is reported together with the oracle measured on
-# the SAME subset, so the reader can see how close RecoverAI is
-# to the recoverable ceiling without substituting the ceiling
-# for the result.
-#
-#
 # IMPORTANT
 # ------------------------------------------------------------
 # The AI diagnosis success_probability is NEVER used as
@@ -417,14 +391,6 @@ def run_recoverai_evaluation(
 
     diagnosis_correct = 0
 
-    # Automated-attempt funnel counters. recovered_on_automated_attempts
-    # equals recoverai_estimated_recovered (both are summed only over
-    # retry_payment / payment_link), but tracking them separately keeps
-    # the funnel self-documenting.
-    recoverai_automated_attempts = 0
-    recovered_on_automated_attempts = 0.0
-    oracle_on_automated_attempts = 0.0
-
     # --------------------------------------------------------
     # Baseline counters
     # --------------------------------------------------------
@@ -602,18 +568,12 @@ def run_recoverai_evaluation(
             "payment_link"
         }:
 
-            recoverai_automated_attempts += 1
-
             probability = get_action_probability(
                 category,
                 recoverai_action
             )
 
             recoverai_estimated_recovered += (
-                probability
-            )
-
-            recovered_on_automated_attempts += (
                 probability
             )
 
@@ -647,16 +607,6 @@ def run_recoverai_evaluation(
             oracle_estimated_recovered += (
                 oracle_probability or 0.0
             )
-
-            # Oracle ceiling measured on the SAME subset that
-            # RecoverAI actually attempted (fair comparison).
-            if recoverai_action in {
-                "retry_payment",
-                "payment_link"
-            }:
-                oracle_on_automated_attempts += (
-                    oracle_probability or 0.0
-                )
 
         # ====================================================
         # NAIVE BASELINE
@@ -706,36 +656,6 @@ def run_recoverai_evaluation(
     oracle_gap = (
         oracle_rate - recoverai_rate
     )
-
-    # ========================================================
-    # AUTOMATED-ATTEMPT FUNNEL RATES
-    # ========================================================
-    # Success is measured ONLY on payments where RecoverAI took
-    # an automated action (retry_payment / payment_link).
-    # Blocked, human-reviewed, fraud, opted-out and high-value
-    # payments are excluded from both numerator and denominator.
-
-    if recoverai_automated_attempts > 0:
-
-        attempted_success_rate = (
-            recovered_on_automated_attempts
-            / recoverai_automated_attempts
-        ) * 100
-
-        oracle_attempted_rate = (
-            oracle_on_automated_attempts
-            / recoverai_automated_attempts
-        ) * 100
-
-        oracle_funnel_gap = (
-            oracle_attempted_rate - attempted_success_rate
-        )
-
-    else:
-
-        attempted_success_rate = 0.0
-        oracle_attempted_rate = 0.0
-        oracle_funnel_gap = 0.0
 
     # ========================================================
     # ACCURACY
@@ -803,13 +723,6 @@ def run_recoverai_evaluation(
                 2
             ),
 
-            "automated_attempts": recoverai_automated_attempts,
-
-            "automated_attempt_success_rate_percent": round(
-                attempted_success_rate,
-                2
-            ),
-
             "diagnosis_accuracy_percent": round(
                 diagnosis_accuracy,
                 2
@@ -850,12 +763,7 @@ def run_recoverai_evaluation(
                 2
             ),
 
-            "human_review": oracle_human_review,
-
-            "automated_attempt_success_rate_percent": round(
-                oracle_attempted_rate,
-                2
-            )
+            "human_review": oracle_human_review
         },
 
         "comparison": {
@@ -867,11 +775,6 @@ def run_recoverai_evaluation(
 
             "oracle_gap_percentage_points": round(
                 oracle_gap,
-                2
-            ),
-
-            "oracle_funnel_gap_percentage_points": round(
-                oracle_funnel_gap,
                 2
             )
         },
@@ -949,6 +852,8 @@ if __name__ == "__main__":
             ["eligible_payments"]
         )
 
+        print()
+
         print("=" * 70)
         print("RECOVERAI")
         print("=" * 70)
@@ -960,37 +865,10 @@ if __name__ == "__main__":
         )
 
         print(
-            "Recovery rate (all failed payments):",
+            "Automated recovery rate:",
             results["recoverai"]
             ["automated_recovery_rate_percent"],
             "%"
-        )
-
-        print(
-            "Automated attempts:",
-            results["recoverai"]
-            ["automated_attempts"]
-        )
-
-        print(
-            "Success on automated attempts:",
-            results["recoverai"]
-            ["automated_attempt_success_rate_percent"],
-            "%"
-        )
-
-        print(
-            "Oracle on the SAME subset:",
-            results["oracle"]
-            ["automated_attempt_success_rate_percent"],
-            "%"
-        )
-
-        print(
-            "Oracle funnel gap:",
-            results["comparison"]
-            ["oracle_funnel_gap_percentage_points"],
-            "percentage points"
         )
 
         print(
@@ -1017,17 +895,6 @@ if __name__ == "__main__":
             "Human review:",
             results["recoverai"]
             ["human_review"]
-        )
-
-        print()
-        print(
-            "Note: 'Success on automated attempts' divides RecoverAI's\n"
-            "expected recoveries by ONLY the payments where it actually\n"
-            "took an automated action (retry / payment link). Blocked,\n"
-            "human-review, fraud, opted-out and high-value payments are\n"
-            "excluded from BOTH numerator and denominator. The oracle\n"
-            "is measured on that same subset so the ceiling is reported\n"
-            "alongside, never substituted for, the result."
         )
 
         print()
