@@ -2,34 +2,208 @@
 <html lang="en">
 
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>RecoverAI Dashboard</title>
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-    <link rel="stylesheet" href="style.css">
+    <title>RecoverAI Command Center</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
 </head>
+
 
 <body>
 
+
+<!-- =========================================================
+     SIDEBAR
+========================================================= -->
+
+<aside class="sidebar">
+
+    <div class="brand">
+
+        <div class="brand-icon">
+            ◇
+        </div>
+
+        <div>
+
+            <h1>RecoverAI</h1>
+
+            <span>COMMAND CENTER</span>
+
+        </div>
+
+    </div>
+
+
+    <nav>
+
+        <a
+            href="#overview"
+            class="nav-item active"
+        >
+            <span>⌂</span>
+            Overview
+        </a>
+
+
+        <a
+            href="#payments"
+            class="nav-item"
+        >
+            <span>▣</span>
+            Payments
+        </a>
+
+
+        <a
+            href="#recovery-actions"
+            class="nav-item"
+        >
+            <span>◇</span>
+            Recovery Actions
+        </a>
+
+
+        <a
+            href="#ai-decisions"
+            class="nav-item"
+        >
+            <span>◉</span>
+            AI Decisions
+        </a>
+
+
+        <a
+            href="#policy-safety"
+            class="nav-item"
+        >
+            <span>♢</span>
+            Policy & Safety
+        </a>
+
+
+        <a
+            href="#metrics"
+            class="nav-item"
+        >
+            <span>▥</span>
+            Metrics
+        </a>
+
+    </nav>
+
+
+    <div class="sidebar-bottom">
+
+        <div class="environment">
+
+            <span class="label">
+                ENVIRONMENT
+            </span>
+
+            <strong>
+                TEST MODE
+            </strong>
+
+            <small>
+                Razorpay Test Mode
+            </small>
+
+        </div>
+
+
+        <div class="environment">
+
+            <span class="label">
+                DATA COHORT
+            </span>
+
+            <strong id="cohort-size">
+                —
+            </strong>
+
+            <small>
+                Current RecoverAI database
+            </small>
+
+        </div>
+
+    </div>
+
+</aside>
+
+
+
+<!-- =========================================================
+     MAIN
+========================================================= -->
+
+<main class="main" id="overview">
+
+
     <!-- =====================================================
-         HEADER
+         TOP HEADER
     ====================================================== -->
 
-    <header>
+    <header class="topbar">
 
-        <div class="header-content">
+        <div>
 
-            <div>
-                <h1>RecoverAI</h1>
-                <p>Payment Recovery Dashboard</p>
+            <div class="eyebrow">
+                PAYMENT RECOVERY INTELLIGENCE
             </div>
+
+            <h2>
+                RecoverAI Command Center
+            </h2>
+
+            <p>
+                AI → Policy → Action → Recovery
+            </p>
+
+        </div>
+
+
+        <div class="top-actions">
+
+            <div class="sandbox">
+
+                <span class="dot"></span>
+
+                SANDBOX · DEMO
+
+            </div>
+
+
+            <div class="updated">
+
+                <span>
+                    Last updated
+                </span>
+
+                <strong id="last-updated">
+                    —
+                </strong>
+
+            </div>
+
 
             <button
                 id="refresh-button"
                 onclick="loadDashboard()"
             >
-                Refresh Dashboard
+                ↻ Refresh
             </button>
 
         </div>
@@ -37,214 +211,884 @@
     </header>
 
 
+
     <!-- =====================================================
-         MAIN DASHBOARD
+         VALIDATED BENCHMARK
     ====================================================== -->
 
-    <main>
+    <section class="panel benchmark-panel">
 
+        <div class="panel-header">
 
-        <!-- =================================================
-             STATISTICS
-        ================================================== -->
+            <div>
 
-        <section class="stats">
+                <h3>
+                    Validated 500-Payment Benchmark
+                </h3>
 
-
-            <!-- Total Payments -->
-
-            <div class="card">
-
-                <h3>Total Payments</h3>
-
-                <p id="total-payments">
-                    0
+                <p>
+                    Frozen evaluation result from the RecoverAI benchmark run
                 </p>
 
             </div>
 
 
-            <!-- Failed Payments -->
+            <span class="benchmark-badge">
+                VALIDATED
+            </span>
 
-            <div class="card">
-
-                <h3>Failed Payments</h3>
-
-                <p id="failed-payments">
-                    0
-                </p>
-
-            </div>
+        </div>
 
 
-            <!-- Successful Payments -->
-
-            <div class="card">
-
-                <h3>Successful Payments</h3>
-
-                <p id="successful-payments">
-                    0
-                </p>
-
-            </div>
+        <div class="benchmark-grid">
 
 
-            <!-- Confirmed Successful Recoveries -->
+            <div class="benchmark-stat">
 
-            <div class="card">
+                <span>
+                    Recovery Rate
+                </span>
 
-                <h3>Confirmed Successful Payments</h3>
+                <strong>
+                    40.20%
+                </strong>
 
-                <p id="confirmed-successful-payments">
-                    0
-                </p>
+                <small>
+                    201 / 500 payments
+                </small>
 
             </div>
 
 
-            <!-- Recovery Rate -->
+            <div class="benchmark-stat">
 
-            <div class="card">
+                <span>
+                    Recovered Revenue
+                </span>
 
-                <h3>Confirmed Payment Recovery Rate</h3>
+                <strong>
+                    ₹10,29,704.46
+                </strong>
 
-                <p id="recovery-rate">
-                    0%
-                </p>
-
-            </div>
-
-
-            <!-- Executed Actions -->
-
-            <div class="card">
-
-                <h3>Executed Actions</h3>
-
-                <p id="executed-actions">
-                    0
-                </p>
+                <small>
+                    Confirmed synthetic/Test Mode outcomes
+                </small>
 
             </div>
 
 
-            <!-- Blocked Actions -->
+            <div class="benchmark-stat">
 
-            <div class="card">
+                <span>
+                    Payments Recovered
+                </span>
 
-                <h3>Blocked Actions</h3>
+                <strong>
+                    201
+                </strong>
 
-                <p id="blocked-actions">
-                    0
-                </p>
+                <small>
+                    Confirmed recoveries
+                </small>
+
+            </div>
+
+
+            <div class="benchmark-stat">
+
+                <span>
+                    Actions Executed
+                </span>
+
+                <strong>
+                    404
+                </strong>
+
+                <small>
+                    Controlled actions
+                </small>
 
             </div>
 
 
-            <!-- Human Review -->
+            <div class="benchmark-stat">
 
-            <div class="card">
+                <span>
+                    Policy Blocked
+                </span>
 
-                <h3>Human Review</h3>
+                <strong>
+                    89
+                </strong>
 
-                <p id="human-review">
-                    0
-                </p>
-
-            </div>
-
-        </section>
-
-
-        <!-- =================================================
-             PAYMENTS
-        ================================================== -->
-
-        <section class="panel">
-
-            <h2>Payments</h2>
-
-            <div class="table-container">
-
-                <table>
-
-                    <thead>
-
-                        <tr>
-
-                            <th>Payment ID</th>
-
-                            <th>Amount</th>
-
-                            <th>Currency</th>
-
-                            <th>Status</th>
-
-                            <th>Failure Reason</th>
-
-                        </tr>
-
-                    </thead>
-
-                    <tbody id="payments-table">
-
-                    </tbody>
-
-                </table>
+                <small>
+                    Safety interventions
+                </small>
 
             </div>
 
-        </section>
 
+            <div class="benchmark-stat">
 
-        <!-- =================================================
-             RECOVERY ACTIONS
-        ================================================== -->
+                <span>
+                    Human Review
+                </span>
 
-        <section class="panel">
+                <strong>
+                    7
+                </strong>
 
-            <h2>Recovery Actions</h2>
-
-            <div class="table-container">
-
-                <table>
-
-                    <thead>
-
-                        <tr>
-
-                            <th>Attempt ID</th>
-
-                            <th>Payment ID</th>
-
-                            <th>Status</th>
-
-                            <th>Failure Reason</th>
-
-                        </tr>
-
-                    </thead>
-
-                    <tbody id="attempts-table">
-
-                    </tbody>
-
-                </table>
+                <small>
+                    Escalated cases
+                </small>
 
             </div>
 
-        </section>
+        </div>
 
+    </section>
 
-    </main>
 
 
     <!-- =====================================================
-         JAVASCRIPT
+         CURRENT DATABASE KPI CARDS
     ====================================================== -->
 
-    <script src="app.js"></script>
+    <section class="kpi-grid">
+
+
+        <div class="kpi-card green">
+
+            <div class="kpi-icon">
+                ₹
+            </div>
+
+            <div>
+
+                <span>
+                    Current DB Revenue
+                </span>
+
+                <strong id="recovered-revenue">
+                    —
+                </strong>
+
+                <small>
+                    Confirmed recoveries
+                </small>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="kpi-card blue">
+
+            <div class="kpi-icon">
+                ↗
+            </div>
+
+            <div>
+
+                <span>
+                    Current DB Recovery Rate
+                </span>
+
+                <strong id="recovery-rate">
+                    —
+                </strong>
+
+                <small>
+                    Current database cohort
+                </small>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="kpi-card purple">
+
+            <div class="kpi-icon">
+                □
+            </div>
+
+            <div>
+
+                <span>
+                    Payments Analyzed
+                </span>
+
+                <strong id="total-payments">
+                    —
+                </strong>
+
+                <small>
+                    Current RecoverAI database
+                </small>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="kpi-card green">
+
+            <div class="kpi-icon">
+                ✓
+            </div>
+
+            <div>
+
+                <span>
+                    Successfully Recovered
+                </span>
+
+                <strong id="successful-recoveries">
+                    —
+                </strong>
+
+                <small>
+                    Confirmed outcomes
+                </small>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="kpi-card orange">
+
+            <div class="kpi-icon">
+                ⛨
+            </div>
+
+            <div>
+
+                <span>
+                    Policy Blocked
+                </span>
+
+                <strong id="blocked-actions">
+                    —
+                </strong>
+
+                <small>
+                    Current database state
+                </small>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="kpi-card purple">
+
+            <div class="kpi-icon">
+                ●
+            </div>
+
+            <div>
+
+                <span>
+                    Human Review
+                </span>
+
+                <strong id="human-review">
+                    —
+                </strong>
+
+                <small>
+                    Current database state
+                </small>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         REVENUE OVERVIEW
+    ====================================================== -->
+
+    <section
+        class="panel revenue-panel"
+        id="metrics"
+    >
+
+        <div class="panel-header">
+
+            <div>
+
+                <h3>
+                    Revenue Recovery Overview
+                </h3>
+
+                <p>
+                    Current RecoverAI database performance
+                </p>
+
+            </div>
+
+            <div class="panel-status">
+                ●
+            </div>
+
+        </div>
+
+
+        <div class="revenue-content">
+
+
+            <div class="donut">
+
+                <div class="donut-inner">
+
+                    <strong id="donut-rate">
+                        —
+                    </strong>
+
+                    <span>
+                        Recovery
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="revenue-stats">
+
+
+                <div>
+
+                    <span>
+                        Failed Payments
+                    </span>
+
+                    <strong id="failed-payments">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <span>
+                        Successfully Recovered
+                    </span>
+
+                    <strong
+                        class="success-text"
+                        id="revenue-success"
+                    >
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <span>
+                        Actions Executed
+                    </span>
+
+                    <strong id="executed-actions">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <span>
+                        Revenue At Risk
+                    </span>
+
+                    <strong id="revenue-risk">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <span>
+                        Execution Success Rate
+                    </span>
+
+                    <strong id="execution-success-rate">
+                        —
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         FAILURE + FUNNEL
+    ====================================================== -->
+
+    <section class="two-column">
+
+
+        <!-- FAILURE ANALYSIS -->
+
+        <div class="panel">
+
+            <div class="panel-header">
+
+                <div>
+
+                    <h3>
+                        Failure Analysis
+                    </h3>
+
+                    <p>
+                        Current failed-payment distribution
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div
+                id="failure-analysis"
+                class="failure-list"
+            >
+
+                <div class="loading">
+                    Loading...
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- RECOVERY FUNNEL -->
+
+        <div class="panel">
+
+            <div class="panel-header">
+
+                <div>
+
+                    <h3>
+                        Recovery Funnel
+                    </h3>
+
+                    <p>
+                        Failed payment → action → confirmed outcome
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="funnel">
+
+
+                <div class="funnel-row">
+
+                    <span>
+                        Failed
+                    </span>
+
+                    <strong id="funnel-failed">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div class="funnel-bar">
+                    <span
+                        id="failed-bar"
+                        style="width:100%"
+                    ></span>
+                </div>
+
+
+
+                <div class="funnel-row">
+
+                    <span>
+                        Actions
+                    </span>
+
+                    <strong id="funnel-actions">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div class="funnel-bar">
+
+                    <span
+                        id="actions-bar"
+                        style="width:0%"
+                    ></span>
+
+                </div>
+
+
+
+                <div class="funnel-row">
+
+                    <span>
+                        Recovered
+                    </span>
+
+                    <strong
+                        class="success-text"
+                        id="funnel-recovered"
+                    >
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div class="funnel-bar">
+
+                    <span
+                        id="recovered-bar"
+                        style="width:0%"
+                    ></span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         AI DECISION CENTER
+    ====================================================== -->
+
+    <section
+        class="panel"
+        id="ai-decisions"
+    >
+
+        <div class="panel-header">
+
+            <div>
+
+                <h3>
+                    AI Decision Center
+                </h3>
+
+                <p>
+                    Diagnosis → Confidence → Recovery → Policy → Action
+                </p>
+
+            </div>
+
+            <span class="decision-badge">
+                READ ONLY
+            </span>
+
+        </div>
+
+
+        <div
+            id="ai-decision"
+            class="decision-grid"
+        >
+
+            <div class="loading">
+                Loading AI decision preview...
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         POLICY & SAFETY
+    ====================================================== -->
+
+    <section
+        class="panel"
+        id="policy-safety"
+    >
+
+        <div class="panel-header">
+
+            <div>
+
+                <h3>
+                    Policy & Safety Center
+                </h3>
+
+                <p>
+                    AI recommendations are controlled by deterministic policy
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="safety-grid">
+
+
+            <div class="safety approved">
+
+                <span>
+                    CURRENT APPROVED / EXECUTED
+                </span>
+
+                <strong id="safety-approved">
+                    —
+                </strong>
+
+            </div>
+
+
+            <div class="safety blocked">
+
+                <span>
+                    CURRENT BLOCKED
+                </span>
+
+                <strong id="safety-blocked">
+                    —
+                </strong>
+
+            </div>
+
+
+            <div class="safety human">
+
+                <span>
+                    CURRENT HUMAN REVIEW
+                </span>
+
+                <strong id="safety-human">
+                    —
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div class="safety-benchmark">
+
+            <div>
+
+                <span>
+                    VALIDATED BENCHMARK SAFETY
+                </span>
+
+                <strong>
+                    89 BLOCKED · 7 HUMAN REVIEW
+                </strong>
+
+                <small>
+                    Recorded during the validated 500-payment benchmark run.
+                </small>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         RECENT PAYMENTS
+    ====================================================== -->
+
+    <section
+        class="panel"
+        id="payments"
+    >
+
+        <div class="panel-header">
+
+            <div>
+
+                <h3>
+                    Recent Payments
+                </h3>
+
+                <p>
+                    Latest records from the current RecoverAI database
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="table-container">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Payment
+                        </th>
+
+                        <th>
+                            Amount
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
+                        <th>
+                            Failure Reason
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="payments-table">
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         RECOVERY ATTEMPTS
+    ====================================================== -->
+
+    <section
+        class="panel"
+        id="recovery-actions"
+    >
+
+        <div class="panel-header">
+
+            <div>
+
+                <h3>
+                    Recovery Action Audit
+                </h3>
+
+                <p>
+                    Latest payment attempts and execution outcomes
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="table-container">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Attempt
+                        </th>
+
+                        <th>
+                            Payment
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
+                        <th>
+                            Failure Reason
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="attempts-table">
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         FOOTER
+    ====================================================== -->
+
+    <footer>
+
+        <span>
+            RecoverAI
+        </span>
+
+        <span>
+            AI → Policy → Action → Recovery
+        </span>
+
+        <span>
+            Test Mode
+        </span>
+
+    </footer>
+
+
+</main>
+
+
+
+<script src="app.js"></script>
+
 
 </body>
 

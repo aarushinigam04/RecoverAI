@@ -5,38 +5,86 @@ def calculate_metrics(db):
     """
     Phase 9/12: Metrics & Evaluation
 
-    Calculates confirmed payment recovery metrics.
+    Calculates confirmed recovery metrics only for the
+    original RecoverAI synthetic evaluation cohort.
 
-    A payment is considered successfully recovered only when
-    the actual Payment record has status = "success".
+    The seed dataset creates 500 evaluation payments with
+    order IDs:
 
-    Repeated payment attempts for the same payment are counted
-    only once when calculating confirmed recoveries.
+        RECOVERAI-ORD-0001
+        ...
+        RECOVERAI-ORD-0500
+
+    The cohort remains fixed even after a payment changes
+    from failed -> success.
+
+    Payment.status is the source of truth for confirmed
+    recovery.
     """
+
+    # =========================================================
+    # ORIGINAL SYNTHETIC EVALUATION COHORT
+    # =========================================================
+    #
+    # IMPORTANT:
+    # Do NOT calculate metrics from every payment in the
+    # database because additional test payments may exist.
+    #
+
+    evaluation_payments = (
+        db.query(models.Payment)
+        .filter(
+            models.Payment.order_id.like("RECOVERAI-ORD-%")
+        )
+        .all()
+    )
+
+    evaluation_payment_ids = {
+        payment.id
+        for payment in evaluation_payments
+    }
 
     # ---------------------------------------------------------
     # PAYMENT STATISTICS
     # ---------------------------------------------------------
 
-    total_payments = db.query(models.Payment).count()
+    total_payments = len(evaluation_payments)
 
-    failed_payments = (
-        db.query(models.Payment)
-        .filter(models.Payment.status == "failed")
-        .count()
+    failed_payments = sum(
+        1
+        for payment in evaluation_payments
+        if payment.status == "failed"
     )
 
-    successful_payments = (
-        db.query(models.Payment)
-        .filter(models.Payment.status == "success")
-        .count()
+    successful_payments = sum(
+        1
+        for payment in evaluation_payments
+        if payment.status == "success"
     )
 
     # ---------------------------------------------------------
     # PAYMENT ATTEMPTS
     # ---------------------------------------------------------
+    #
+    # Only attempts belonging to the original evaluation
+    # cohort are included.
+    #
 
-    attempts = db.query(models.PaymentAttempt).all()
+    if evaluation_payment_ids:
+
+        attempts = (
+            db.query(models.PaymentAttempt)
+            .filter(
+                models.PaymentAttempt.payment_id.in_(
+                    evaluation_payment_ids
+                )
+            )
+            .all()
+        )
+
+    else:
+
+        attempts = []
 
     total_attempts = len(attempts)
 
@@ -44,16 +92,15 @@ def calculate_metrics(db):
     # CONFIRMED RECOVERIES
     # ---------------------------------------------------------
     #
-    # IMPORTANT:
-    # We use Payment.status as the source of truth.
+    # Payment.status is the source of truth.
     #
-    # A "success" PaymentAttempt alone does NOT mean the
-    # payment was successfully recovered.
+    # A successful PaymentAttempt alone does NOT count as
+    # a confirmed recovery.
     #
 
     confirmed_recovered_payment_ids = {
         payment.id
-        for payment in db.query(models.Payment).all()
+        for payment in evaluation_payments
         if payment.status == "success"
     }
 
@@ -103,23 +150,21 @@ def calculate_metrics(db):
     # CONFIRMED PAYMENT RECOVERY RATE
     # ---------------------------------------------------------
     #
-    # Current failed payments + confirmed recovered payments
-    # represents the original failed-payment population.
+    # IMPORTANT:
     #
-    # Example:
+    # The denominator is the ORIGINAL evaluation cohort,
+    # not the number of payments that are currently failed.
     #
-    # 1 confirmed recovery
-    # 14 currently failed
+    # Therefore, if 1 of the original 500 payments is recovered:
     #
-    # Original failed population = 1 + 14 = 15
+    #     1 / 500 * 100 = 0.20%
     #
-    # Recovery rate = 1 / 15 * 100 = 6.67%
+    # If 3 are recovered:
+    #
+    #     3 / 500 * 100 = 0.60%
     #
 
-    original_failed_payment_population = (
-        confirmed_recovered_payments
-        + failed_payments
-    )
+    original_failed_payment_population = total_payments
 
     if original_failed_payment_population > 0:
 
@@ -138,6 +183,7 @@ def calculate_metrics(db):
         )
 
     else:
+
         confirmed_recovery_rate = 0
 
     # ---------------------------------------------------------
@@ -147,11 +193,15 @@ def calculate_metrics(db):
     if total_attempts > 0:
 
         blocked_rate = round(
-            (blocked_actions / total_attempts) * 100,
+            (
+                blocked_actions
+                / total_attempts
+            ) * 100,
             2
         )
 
     else:
+
         blocked_rate = 0
 
     # ---------------------------------------------------------
@@ -161,11 +211,15 @@ def calculate_metrics(db):
     if total_attempts > 0:
 
         human_review_rate = round(
-            (human_review_cases / total_attempts) * 100,
+            (
+                human_review_cases
+                / total_attempts
+            ) * 100,
             2
         )
 
     else:
+
         human_review_rate = 0
 
     # ---------------------------------------------------------
@@ -173,6 +227,7 @@ def calculate_metrics(db):
     # ---------------------------------------------------------
 
     return {
+
         "payments": {
             "total": total_payments,
             "failed": failed_payments,

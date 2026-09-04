@@ -1,0 +1,10 @@
+fastapi==0.141.1
+uvicorn==0.52.4
+SQLAlchemy==2.0.52
+psycopg2-binary==2.9.12
+python-dotenv==1.2.3
+razorpay==2.0.1
+requests==2.34.2
+pandas==3.0.5
+numpy==2.5.2
+Faker==40.37.0

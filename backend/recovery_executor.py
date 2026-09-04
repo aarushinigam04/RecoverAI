@@ -7,8 +7,10 @@ def execute_recovery(payment, policy_result, db):
     Execute a recovery action only after it has been
     approved by the Policy & Safety Engine.
 
-    Records the recovery action and delegates approved
-    actions to the Action Executor.
+    BLOCKED and NEEDS_HUMAN decisions are recorded but
+    are never delegated to the Action Executor.
+
+    Only APPROVED actions are executed.
     """
 
     policy_decision = policy_result["policy_decision"]
@@ -30,7 +32,6 @@ def execute_recovery(payment, policy_result, db):
     )
 
     if not recovery_case:
-
         recovery_case = models.RecoveryCase(
             payment_id=payment.id,
             status="open",
@@ -44,67 +45,72 @@ def execute_recovery(payment, policy_result, db):
     # ---------------------------------------------------------
     # BLOCKED
     # ---------------------------------------------------------
+    # Policy explicitly prevents execution.
+    # DO NOT call the Action Executor.
 
     if policy_decision == "BLOCKED":
-        action_result = execute_action(
-            payment=payment,
-            action_type=approved_action,
-            db=db
+
+        message = (
+            "Action blocked by Policy & Safety Engine. "
+            "No recovery action was executed."
         )
 
         action = models.RecoveryAction(
             recovery_case_id=recovery_case.id,
             action_type=approved_action,
-            message=action_result["message"],
+            message=message,
             status="blocked"
-       )
+        )
 
         db.add(action)
         db.commit()
 
         return {
             "execution_status": "BLOCKED",
+            "recovery_status": "BLOCKED",
             "action": approved_action,
-            "message": action_result["message"],
-            "attempt_id": action_result.get("attempt_id")
+            "message": message,
+            "attempt_id": None
         }
 
     # ---------------------------------------------------------
     # NEEDS HUMAN
     # ---------------------------------------------------------
+    # Human review is required.
+    # DO NOT call the Action Executor.
 
     if policy_decision == "NEEDS_HUMAN":
-        
-        action_result = execute_action(
-            payment=payment,
-            action_type=approved_action,
-            db=db
+
+        message = (
+            "Action requires human review. "
+            "No automated recovery action was executed."
         )
 
         action = models.RecoveryAction(
             recovery_case_id=recovery_case.id,
             action_type=approved_action,
-            message=action_result["message"],
+            message=message,
             status="needs_human"
-     )
+        )
 
         db.add(action)
         db.commit()
 
         return {
             "execution_status": "NEEDS_HUMAN",
+            "recovery_status": "NEEDS_HUMAN",
             "action": approved_action,
-            "message": action_result["message"],
-            "attempt_id": action_result.get("attempt_id")
-       }
+            "message": message,
+            "attempt_id": None
+        }
 
     # ---------------------------------------------------------
     # APPROVED
     # ---------------------------------------------------------
+    # Only APPROVED actions reach the Action Executor.
 
     if policy_decision == "APPROVED":
 
-        # Execute the policy-approved action
         action_result = execute_action(
             payment=payment,
             action_type=approved_action,
@@ -142,11 +148,15 @@ def execute_recovery(payment, policy_result, db):
         db.commit()
 
         # -----------------------------------------------------
-        # Return execution result
+        # Return complete execution result
         # -----------------------------------------------------
 
         return {
             "execution_status": action_result["action_status"],
+            "recovery_status": action_result.get(
+                "recovery_status",
+                "UNKNOWN"
+            ),
             "action": approved_action,
             "message": action_result["message"],
             "attempt_id": action_result.get("attempt_id")
@@ -155,11 +165,17 @@ def execute_recovery(payment, policy_result, db):
     # ---------------------------------------------------------
     # UNKNOWN POLICY DECISION
     # ---------------------------------------------------------
+    # Fail safely. Never execute an unknown decision.
+
+    message = (
+        "Unknown policy decision. "
+        "No recovery action was executed."
+    )
 
     action = models.RecoveryAction(
         recovery_case_id=recovery_case.id,
         action_type=approved_action,
-        message="Unknown policy decision.",
+        message=message,
         status="failed"
     )
 
@@ -168,6 +184,8 @@ def execute_recovery(payment, policy_result, db):
 
     return {
         "execution_status": "FAILED",
+        "recovery_status": "FAILED",
         "action": approved_action,
-        "message": "Unknown policy decision."
+        "message": message,
+        "attempt_id": None
     }

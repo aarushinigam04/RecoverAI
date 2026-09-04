@@ -186,6 +186,7 @@ OPT_OUT_CATEGORIES = {
 # ------------------------------------------------------------
 
 def normalize_reason(reason):
+
     if not reason:
         return ""
 
@@ -347,7 +348,7 @@ def get_oracle_action(payment, category):
 
 def run_recoverai_evaluation(
     db,
-    held_out_size=200
+    held_out_size=500
 ):
 
     # --------------------------------------------------------
@@ -823,12 +824,13 @@ if __name__ == "__main__":
         print("=" * 70)
 
         print()
+
         print(
             "Outcome model: FROZEN ACTION-SPECIFIC TABLE"
         )
 
         print(
-            "Held-out population: 200 failed payments"
+            "Held-out population: 500 failed payments"
         )
 
         print(
@@ -839,7 +841,7 @@ if __name__ == "__main__":
 
         results = run_recoverai_evaluation(
             db,
-            held_out_size=200
+            held_out_size=500
         )
 
         print("=" * 70)
